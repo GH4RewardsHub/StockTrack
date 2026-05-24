@@ -7,8 +7,8 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
+import { setGlobalOptions } from "firebase-functions";
+// import { onRequest } from "firebase-functions/https";
 import * as logger from "firebase-functions/logger";
 
 // Start writing functions
@@ -30,3 +30,10 @@ setGlobalOptions({ maxInstances: 10 });
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
+//
+import * as functions from "firebase-functions";
+
+export const helloWorld = functions.https.onRequest((request, response) => {
+  logger.info("Hello logs!", { structuredData: true });
+  response.send("StockTrack Functions Running");
+});
