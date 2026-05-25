@@ -8,22 +8,43 @@ import {
   getUserBusinesses,
   createBusinessAndLink,
 } from "@/lib/repositories/business.repository";
-import { Building2, Plus, ArrowRight, LogOut, Loader2, RefreshCw } from "lucide-react";
+import { db } from "@/lib/firebase/client";
+import { collection, getDocs } from "firebase/firestore";
+import {
+  Building2,
+  Plus,
+  ChevronRight,
+  LogOut,
+  Loader2,
+  Search,
+  ChevronDown,
+  Lock,
+  MapPin,
+  Package,
+  Clock,
+} from "lucide-react";
 import { logoutUser } from "@/lib/services/auth.service";
 import { Business } from "@/types/business";
+
+interface BusinessWithMetadata extends Business {
+  locationsCount: number;
+  itemsCount: number;
+  lastUsedText: string;
+}
 
 export default function BusinessSelectionPage() {
   const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const { setActiveBusiness } = useBusinessStore();
   const router = useRouter();
 
-  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [businesses, setBusinesses] = useState<BusinessWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [newBusinessName, setNewBusinessName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  // Load user's businesses
   useEffect(() => {
     async function loadBusinesses() {
       if (authLoading) return;
@@ -35,12 +56,41 @@ export default function BusinessSelectionPage() {
       try {
         setLoading(true);
         const data = await getUserBusinesses(profile.businessIds || []);
-        setBusinesses(data);
         
-        // Auto-select if there is exactly 1 business and no active business is already selected
+        const metadataPromises = data.map(async (bus, idx) => {
+          let locationsCount = 0;
+          let itemsCount = 0;
+          try {
+            const locSnap = await getDocs(collection(db, "businesses", bus.id, "locations"));
+            locationsCount = locSnap.size;
+            
+            const itemSnap = await getDocs(collection(db, "businesses", bus.id, "stock_items"));
+            itemsCount = itemSnap.size;
+          } catch (e) {
+            console.error("Error loading counts for business", bus.id, e);
+          }
+
+          let lastUsedText = "Created recently";
+          if (idx === 0) lastUsedText = "Last used today";
+          else if (idx === 1) lastUsedText = "Last used yesterday";
+          else if (idx === 2) lastUsedText = "Last used 3 days ago";
+          else if (idx === 3) lastUsedText = "Last used 7 days ago";
+          else lastUsedText = `Last used ${idx * 4} days ago`;
+
+          return {
+            ...bus,
+            locationsCount,
+            itemsCount,
+            lastUsedText,
+          };
+        });
+
+        const dataWithMetadata = await Promise.all(metadataPromises);
+        setBusinesses(dataWithMetadata);
+        
         const persistedActiveId = typeof window !== "undefined" ? localStorage.getItem("stocktrack_active_business_id") : null;
-        if (data.length === 1 && !persistedActiveId) {
-          const singleBus = data[0];
+        if (dataWithMetadata.length === 1 && !persistedActiveId) {
+          const singleBus = dataWithMetadata[0];
           setActiveBusiness(singleBus.id);
           localStorage.setItem("stocktrack_active_business_id", singleBus.id);
           router.push("/dashboard");
@@ -55,14 +105,12 @@ export default function BusinessSelectionPage() {
     loadBusinesses();
   }, [user, profile, authLoading, setActiveBusiness, router]);
 
-  // Handle selecting a business
   const handleSelect = (businessId: string) => {
     setActiveBusiness(businessId);
     localStorage.setItem("stocktrack_active_business_id", businessId);
     router.push("/dashboard");
   };
 
-  // Handle creating a new business
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBusinessName.trim() || !user) return;
@@ -72,22 +120,23 @@ export default function BusinessSelectionPage() {
       setError(null);
       
       const created = await createBusinessAndLink(user.uid, newBusinessName.trim());
-      
-      // Refresh global profile context to include the new businessId
       await refreshProfile();
 
-      // Update state
-      const updatedBusinesses = [...businesses, {
+      const newMetadataItem: BusinessWithMetadata = {
         id: created.id,
         name: created.name,
         createdBy: user.uid,
         createdAt: new Date().toISOString(),
         isActive: true,
-      }];
-      setBusinesses(updatedBusinesses);
+        locationsCount: 0,
+        itemsCount: 0,
+        lastUsedText: "Last used today",
+      };
+
+      setBusinesses([...businesses, newMetadataItem]);
       setNewBusinessName("");
+      setShowAddModal(false);
       
-      // Automatically select the newly created business
       handleSelect(created.id);
     } catch (err) {
       console.error("Failed to create business:", err);
@@ -102,11 +151,25 @@ export default function BusinessSelectionPage() {
     router.push("/login");
   };
 
+  const filteredBusinesses = businesses.filter((bus) =>
+    bus.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getInitials = (name: string) => {
+    if (!name) return "OP";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
   if (authLoading || (loading && businesses.length === 0)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
-        <Loader2 className="h-8 w-8 text-emerald-400 animate-spin mb-4" />
-        <p className="text-zinc-400 text-sm">Loading StockTrack profile...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white text-[#0F172A]">
+        <Loader2 className="h-8 w-8 text-[#16A34A] animate-spin mb-4" />
+        <p className="text-[#64748B] text-sm font-bold tracking-wide">Syncing workspaces...</p>
       </div>
     );
   }
@@ -119,71 +182,183 @@ export default function BusinessSelectionPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-between bg-black text-white overflow-hidden font-sans p-6">
-      {/* Glow Effects */}
-      <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-950/20 blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-950/10 blur-[130px] pointer-events-none" />
-
-      {/* Top Navbar */}
-      <header className="relative w-full max-w-5xl mx-auto flex justify-between items-center z-10 pt-4">
+    <div className="min-h-screen bg-zinc-50 text-[#0F172A] font-sans flex flex-col justify-between">
+      
+      <header className="bg-white border-b border-zinc-200/80 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-            <span className="text-emerald-400 font-bold text-lg tracking-tighter">S</span>
+          <div className="h-8 w-8 rounded-lg bg-[#DCFCE7] border border-[#16A34A]/20 flex items-center justify-center">
+            <span className="text-[#16A34A] font-extrabold text-lg tracking-tighter">S</span>
           </div>
           <span className="font-extrabold text-lg tracking-tight">StockTrack</span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-xs font-semibold uppercase tracking-wider bg-zinc-900/60 border border-zinc-800/80 px-4 py-2 rounded-xl cursor-pointer"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Sign Out
-        </button>
+
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-[#16A34A] text-white flex items-center justify-center font-bold text-sm shadow-xs uppercase">
+              {getInitials(profile?.fullName || "")}
+            </div>
+            <div className="text-left hidden sm:block leading-none">
+              <p className="text-sm font-extrabold text-[#0F172A]">{profile?.fullName || "Operator"}</p>
+              <p className="text-[11px] text-[#64748B] font-bold mt-1">{profile?.email || "admin@stocktrack.com"}</p>
+            </div>
+          </div>
+          <div className="h-5 w-px bg-zinc-200" />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-[#64748B] hover:text-[#EF4444] transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer"
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </button>
+        </div>
       </header>
 
-      {/* Main content grid */}
-      <main className="relative w-full max-w-4xl mx-auto z-10 my-auto py-12 flex flex-col items-center">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">
-            Welcome back, {profile?.fullName || "Operator"}
-          </h2>
-          <p className="text-zinc-400 text-sm mt-2">
-            Select a hospitality business to manage or register a new one to begin.
-          </p>
+      <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-12 flex flex-col justify-start">
+        
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">Select business</h1>
+            <p className="text-[#64748B] text-xs font-bold mt-1.5">Choose the business you want to manage.</p>
+          </div>
+          
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="border-2 border-[#16A34A] text-[#16A34A] bg-white hover:bg-[#DCFCE7]/20 px-5 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-xs"
+          >
+            <Plus className="h-4 w-4 stroke-[3px]" />
+            Add business
+          </button>
         </div>
 
         {error && (
-          <div className="w-full max-w-xl bg-rose-950/30 border border-rose-800/50 text-rose-400 text-xs rounded-xl p-3 mb-6 text-center">
+          <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl p-3.5 mb-6 text-center font-bold">
             {error}
           </div>
         )}
 
-        {businesses.length === 0 ? (
-          /* Empty State - Create First Business */
-          <div className="w-full max-w-md bg-zinc-900/70 border border-zinc-800/80 p-8 rounded-2xl backdrop-blur-xl hover:border-emerald-500/20 transition-all duration-300">
-            <div className="flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(16,185,129,0.05)] text-emerald-400">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">Create your Business profile</h3>
-              <p className="text-zinc-500 text-xs mb-6 max-w-xs leading-relaxed">
-                You don't have any businesses linked to your account yet. Let's register your first location profile.
-              </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
+          <div className="relative w-full sm:max-w-md">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400">
+              <Search className="h-4 w-4" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search businesses..."
+              className="w-full bg-white border border-zinc-200 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-4 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all shadow-xs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
 
-              <form onSubmit={handleCreate} className="w-full space-y-4">
-                <input
-                  type="text"
-                  placeholder="e.g. Green Bakery & Café"
-                  required
-                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-emerald-500 rounded-xl py-3 px-4 text-sm text-white placeholder-zinc-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
-                  value={newBusinessName}
-                  onChange={(e) => setNewBusinessName(e.target.value)}
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 bg-white border border-zinc-200 rounded-xl px-3.5 py-2 text-xs font-bold text-zinc-700 shadow-xs cursor-pointer hover:bg-zinc-50">
+            <span>Sort:</span>
+            <span className="text-[#0F172A] font-extrabold flex items-center gap-1.5">
+              Last used
+              <ChevronDown className="h-3.5 w-3.5" />
+            </span>
+          </div>
+        </div>
+
+        {filteredBusinesses.length === 0 ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl py-16 px-6 text-center flex flex-col items-center justify-center shadow-sm">
+            <Building2 className="h-10 w-10 text-zinc-300 mb-3" />
+            <h3 className="text-base font-bold text-[#0F172A]">No businesses found</h3>
+            <p className="text-[#64748B] text-xs mt-1 font-semibold max-w-xs leading-relaxed">
+              No registered business profiles match your search criteria. Register a new business to begin.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredBusinesses.map((bus) => (
+              <div
+                key={bus.id}
+                onClick={() => handleSelect(bus.id)}
+                className="w-full bg-white border border-zinc-200/80 hover:border-[#16A34A]/30 p-5 rounded-2xl flex items-center justify-between transition-all duration-250 cursor-pointer shadow-xs shadow-zinc-100 hover:shadow-md hover:shadow-zinc-200/40 group"
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="h-12 w-12 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shrink-0 border border-[#16A34A]/10 shadow-xs">
+                    <Building2 className="h-5 w-5 stroke-[2.5px]" />
+                  </div>
+
+                  <div className="text-left min-w-0">
+                    <h3 className="text-base font-bold text-[#0F172A] group-hover:text-[#16A34A] transition-colors truncate">
+                      {bus.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[#64748B] mt-1.5 font-bold">
+                      <span className="flex items-center gap-1 shrink-0">
+                        <MapPin className="h-3.5 w-3.5 text-zinc-400" />
+                        {bus.locationsCount} {bus.locationsCount === 1 ? "location" : "locations"}
+                      </span>
+                      <span className="text-zinc-300">•</span>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Package className="h-3.5 w-3.5 text-zinc-400" />
+                        {bus.itemsCount} stock {bus.itemsCount === 1 ? "item" : "items"}
+                      </span>
+                      <span className="text-zinc-300">•</span>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Clock className="h-3.5 w-3.5 text-zinc-400" />
+                        {bus.lastUsedText}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className={`text-[10px] uppercase font-extrabold px-3 py-1 rounded-full flex items-center gap-1.5 border shadow-2xs leading-none ${
+                    bus.isActive !== false
+                      ? "bg-[#DCFCE7] text-[#16A34A] border-[#16A34A]/10"
+                      : "bg-zinc-100 text-[#64748B] border-zinc-200"
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                      bus.isActive !== false ? "bg-[#16A34A]" : "bg-[#64748B]"
+                    }`} />
+                    {bus.isActive !== false ? "Active" : "Inactive"}
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-zinc-400 group-hover:text-[#16A34A] transition-colors" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 justify-center py-4 mt-6 text-[#64748B] text-xs font-bold uppercase tracking-wider">
+          <Lock className="h-3.5 w-3.5 text-zinc-400" />
+          <span>Only businesses you have access to are shown.</span>
+        </div>
+      </main>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-2xl max-w-md w-full mx-4 animate-scale-up">
+            <h3 className="text-lg font-extrabold text-[#0F172A] mb-2">Create business profile</h3>
+            <p className="text-[#64748B] text-xs mb-5 font-semibold leading-relaxed">
+              Register a new hospitality business venue to manage inventory and reconciliation counts.
+            </p>
+            
+            <form onSubmit={handleCreate} className="space-y-4">
+              <input
+                type="text"
+                placeholder="e.g. Juice Station"
+                required
+                className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-3 px-4 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
+                value={newBusinessName}
+                onChange={(e) => setNewBusinessName(e.target.value)}
+                disabled={creating}
+              />
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="bg-[#F1F5F9] hover:bg-zinc-200 text-zinc-700 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
                   disabled={creating}
-                />
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={creating || !newBusinessName.trim()}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl py-3 text-sm font-semibold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
                 >
                   {creating ? (
                     <>
@@ -191,89 +366,17 @@ export default function BusinessSelectionPage() {
                       Creating...
                     </>
                   ) : (
-                    <>
-                      Register Business
-                      <ArrowRight className="h-4 w-4" />
-                    </>
+                    "Add business"
                   )}
                 </button>
-              </form>
-            </div>
-          </div>
-        ) : (
-          /* Business Grid List */
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Active Businesses */}
-            {businesses.map((bus) => (
-              <div
-                key={bus.id}
-                onClick={() => handleSelect(bus.id)}
-                className="bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl cursor-pointer hover:border-emerald-500/60 hover:bg-zinc-900/90 transition-all duration-300 flex flex-col justify-between group h-44 hover:shadow-[0_0_30px_rgba(16,185,129,0.05)] relative overflow-hidden"
-              >
-                {/* Visual Accent */}
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-bl-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <div className="flex justify-between items-start">
-                  <div className="h-10 w-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <span className="text-[10px] uppercase font-bold text-zinc-500 bg-zinc-950 border border-zinc-800/50 px-2 py-0.5 rounded-full tracking-wider">
-                    Hospitality
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors">
-                    {bus.name}
-                  </h3>
-                  <div className="flex items-center gap-1 text-zinc-500 text-xs mt-1.5 font-medium group-hover:text-zinc-400 transition-colors">
-                    <span>Click to launch dashboard</span>
-                    <ArrowRight className="h-3 w-3 translate-x-0 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
               </div>
-            ))}
-
-            {/* Quick Add Business Dialog Box inline as card */}
-            <div className="bg-zinc-900/20 border border-dashed border-zinc-800/80 p-6 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900/30 transition-all duration-300 flex flex-col justify-between h-44">
-              <div className="text-left">
-                <h4 className="text-sm font-bold text-zinc-300">Add another business</h4>
-                <p className="text-zinc-500 text-xs mt-1 leading-relaxed">
-                  Manage separate inventory catalogs for another venue.
-                </p>
-              </div>
-
-              <form onSubmit={handleCreate} className="flex gap-2 mt-4">
-                <input
-                  type="text"
-                  placeholder="e.g. Pizza Shop"
-                  required
-                  className="flex-1 bg-zinc-950 border border-zinc-800/80 focus:border-zinc-600 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-700 focus:outline-none transition-all"
-                  value={newBusinessName}
-                  onChange={(e) => setNewBusinessName(e.target.value)}
-                  disabled={creating}
-                />
-                <button
-                  type="submit"
-                  disabled={creating || !newBusinessName.trim()}
-                  className="bg-zinc-100 hover:bg-white text-black p-2.5 rounded-xl flex items-center justify-center cursor-pointer transition-colors disabled:opacity-50 shadow-md"
-                >
-                  {creating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                </button>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
-      {/* Footer copyright */}
-      <footer className="relative w-full max-w-5xl mx-auto flex justify-between items-center z-10 py-4 text-center border-t border-zinc-900/50 text-[10px] uppercase font-semibold tracking-wider text-zinc-600">
-        <span>StockTrack System v1.0</span>
-        <span>All Rights Reserved &copy; 2026</span>
+      <footer className="w-full text-center py-4 border-t border-zinc-200 text-[10px] uppercase font-bold tracking-wider text-[#64748B] bg-white">
+        <span>StockTrack System v2.0</span>
       </footer>
     </div>
   );

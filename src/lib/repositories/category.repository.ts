@@ -6,9 +6,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase/client";
-
 import { COLLECTIONS } from "@/lib/constants/collections";
-
 import { Category } from "@/types/inventory";
 
 export const createCategory = async (
