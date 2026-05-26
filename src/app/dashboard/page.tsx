@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useBusinessStore } from "@/store/business-store";
-import { db } from "@/lib/firebase/client";
-import { collection, getDocs, limit, query, orderBy } from "firebase/firestore";
+import { getDashboardMetrics } from "@/lib/repositories/stock-item.repository";
 import {
   AlertTriangle,
   TrendingDown,
@@ -37,35 +36,18 @@ export default function DashboardPage() {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const itemsRef = collection(db, "businesses", businessId, "stock_items");
-        const itemsSnap = await getDocs(itemsRef);
-        const allItems = itemsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
-        
-        const activeItems = allItems.filter((i) => i.isActive !== false);
-        const lowStock = activeItems.filter((i) => {
-          return i.reorderLevelBaseQty > 10;
-        });
-
-        const sessionsRef = collection(db, "businesses", businessId, "stock_count_sessions");
-        const sessionsQuery = query(sessionsRef, orderBy("submittedAt", "desc"), limit(5));
-        const sessionsSnap = await getDocs(sessionsQuery);
-        const sessions = sessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-        const poRef = collection(db, "businesses", businessId, "purchase_orders");
-        const poSnap = await getDocs(poRef);
-        const pos = poSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
-        const activePos = pos.filter((po) => po.status === "Sent" || po.status === "Draft");
+        const data = await getDashboardMetrics(businessId);
 
         setStats({
-          totalItems: activeItems.length,
-          lowStockCount: Math.max(lowStock.length, activeItems.length > 0 ? 2 : 0),
-          activeOrders: activePos.length,
-          recentCountCount: sessions.length,
-          varianceAvg: activeItems.length > 0 ? 1.8 : 0,
+          totalItems: data.totalItems,
+          lowStockCount: data.lowStockCount,
+          activeOrders: data.activeOrders,
+          recentCountCount: data.recentCountCount,
+          varianceAvg: data.varianceAvg,
         });
 
-        setRecentSessions(sessions);
-        setLowStockItems(allItems.slice(0, 3));
+        setRecentSessions(data.recentSessions);
+        setLowStockItems(data.lowStockItems);
       } catch (err) {
         console.error("Error loading dashboard metrics:", err);
       } finally {

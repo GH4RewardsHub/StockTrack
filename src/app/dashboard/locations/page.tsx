@@ -65,12 +65,10 @@ export default function LocationsPage() {
         setLoadingContext(true);
         await fetchLocations(businessId);
 
-        if (profile?.businessIds) {
-          const list = await getUserBusinesses(profile.businessIds);
-          setBusinesses(list);
-          const activeDoc = list.find((b) => b.id === businessId) || null;
-          setActiveBusiness(activeDoc);
-        }
+        const list = await getUserBusinesses([]);
+        setBusinesses(list);
+        const activeDoc = list.find((b) => b.id === businessId) || null;
+        setActiveBusiness(activeDoc);
       } catch (err) {
         console.error(err);
       } finally {

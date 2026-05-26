@@ -55,21 +55,9 @@ export default function BusinessSelectionPage() {
 
       try {
         setLoading(true);
-        const data = await getUserBusinesses(profile.businessIds || []);
+        const data = await getUserBusinesses([]);
         
-        const metadataPromises = data.map(async (bus, idx) => {
-          let locationsCount = 0;
-          let itemsCount = 0;
-          try {
-            const locSnap = await getDocs(collection(db, "businesses", bus.id, "locations"));
-            locationsCount = locSnap.size;
-            
-            const itemSnap = await getDocs(collection(db, "businesses", bus.id, "stock_items"));
-            itemsCount = itemSnap.size;
-          } catch (e) {
-            console.error("Error loading counts for business", bus.id, e);
-          }
-
+        const dataWithMetadata = data.map((bus: any, idx) => {
           let lastUsedText = "Created recently";
           if (idx === 0) lastUsedText = "Last used today";
           else if (idx === 1) lastUsedText = "Last used yesterday";
@@ -79,13 +67,10 @@ export default function BusinessSelectionPage() {
 
           return {
             ...bus,
-            locationsCount,
-            itemsCount,
             lastUsedText,
           };
         });
 
-        const dataWithMetadata = await Promise.all(metadataPromises);
         setBusinesses(dataWithMetadata);
         
         const persistedActiveId = typeof window !== "undefined" ? localStorage.getItem("stocktrack_active_business_id") : null;

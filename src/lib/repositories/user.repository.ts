@@ -1,19 +1,39 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
-
-import { db } from "@/lib/firebase/client";
-
+import api from "../services/api";
 import { AppUser } from "@/types/user";
 
 export const createUserProfile = async (user: AppUser) => {
-  await setDoc(doc(db, "users", user.uid), user);
+  // Map uid to id for SQLModel schema
+  const payload = {
+    id: user.uid,
+    email: user.email,
+    name: user.fullName|| user.email || null,
+  };
+  const response = await api.post("/api/users", payload);
+  return response.data;
 };
 
 export const getUserProfile = async (uid: string) => {
-  const snapshot = await getDoc(doc(db, "users", uid));
-
-  if (!snapshot.exists()) {
-    return null;
+  try {
+    const response = await api.get(`/api/users/${uid}`);
+    const data = response.data;
+    // Map id back to uid and name to fullName for Next.js frontend compatibility
+    return {
+      uid: data.id,
+      email: data.email || "",
+      displayName: data.name || "",
+      fullName: data.name || "",
+      name: data.name || "",
+      role: "admin",
+      isActive: true,
+      businessIds: [],
+      createdAt: data.created_at || new Date().toISOString(),
+      last_login_at: new Date().toISOString(),
+    } as unknown as AppUser;
+  } catch (error: any) {
+    if (error.response && error.response.status === 404) {
+      return null;
+    }
+    throw error;
   }
-
-  return snapshot.data() as AppUser;
 };
+

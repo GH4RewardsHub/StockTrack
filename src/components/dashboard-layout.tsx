@@ -80,12 +80,10 @@ export default function DashboardLayout({
 
     async function loadBusinesses() {
       try {
-        if (profile?.businessIds) {
-          const list = await getUserBusinesses(profile.businessIds);
-          setBusinesses(list);
-          const activeDoc = list.find((b) => b.id === currentId) || null;
-          setActiveBusinessDoc(activeDoc);
-        }
+        const list = await getUserBusinesses([]);
+        setBusinesses(list);
+        const activeDoc = list.find((b) => b.id === currentId) || null;
+        setActiveBusinessDoc(activeDoc);
       } catch (err) {
         console.error(err);
       } finally {
@@ -440,10 +438,10 @@ export default function DashboardLayout({
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-xs font-extrabold text-[#0F172A] leading-tight">
-                  {profile?.fullName || "Sujit Mohanty"}
+                  {profile?.fullName || "Jeet Das"}
                 </p>
                 <p className="text-[10px] font-bold text-[#64748B]">
-                  {profile?.email || "sujit@gmail.com"}
+                  {profile?.email || "jeet@gmail.com"}
                 </p>
               </div>
               <button

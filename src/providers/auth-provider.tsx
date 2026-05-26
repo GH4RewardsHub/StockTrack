@@ -43,10 +43,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         let userProfile = await getUserProfile(firebaseUser.uid);
 
-        if (!userProfile) {
+        if (!userProfile || !userProfile.fullName || userProfile.fullName === "Admin User") {
           const newProfile: AppUser = {
             uid: firebaseUser.uid,
-            fullName: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Admin User",
+            fullName: firebaseUser.displayName || userProfile?.fullName || firebaseUser.email?.split("@")[0] || "Admin User",
             email: firebaseUser.email || undefined,
             role: "admin",
             isActive: true,

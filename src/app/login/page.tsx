@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { loginAdmin } from "@/lib/services/auth.service";
 import { KeyRound, Mail, Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -114,6 +115,13 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <div className="mt-6 text-center text-xs font-semibold text-zinc-500">
+            Don't have an account?{" "}
+            <Link href="/signup" className="text-[#16A34A] hover:underline font-extrabold">
+              Sign Up
+            </Link>
+          </div>
 
         </div>
       </div>

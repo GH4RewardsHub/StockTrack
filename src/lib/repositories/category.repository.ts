@@ -1,34 +1,24 @@
-import {
-  addDoc,
-  collection,
-  getDocs,
-  serverTimestamp,
-} from "firebase/firestore";
-
-import { db } from "@/lib/firebase/client";
-import { COLLECTIONS } from "@/lib/constants/collections";
+import api from "../services/api";
 import { Category } from "@/types/inventory";
 
 export const createCategory = async (
   businessId: string,
   data: Omit<Category, "id" | "createdAt">,
 ) => {
-  return addDoc(
-    collection(db, COLLECTIONS.BUSINESSES, businessId, COLLECTIONS.CATEGORIES),
-    {
-      ...data,
-      createdAt: serverTimestamp(),
-    },
-  );
+  const response = await api.post(`/api/businesses/${businessId}/categories`, {
+    name: data.name,
+  });
+  return response.data;
 };
 
 export const getCategories = async (businessId: string) => {
-  const snapshot = await getDocs(
-    collection(db, COLLECTIONS.BUSINESSES, businessId, COLLECTIONS.CATEGORIES),
-  );
-
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
+  const response = await api.get(`/api/businesses/${businessId}/categories`);
+  const data = response.data;
+  return data.map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    createdAt: c.created_at,
+    businessId: c.business_id,
   })) as Category[];
 };
+
