@@ -46,9 +46,14 @@ if os.getenv("NODE_ENV") == "development" or not os.getenv("FIREBASE_AUTH_EMULAT
 app = FastAPI(title="StockTrack API", description="Python FastAPI + SQLModel + Neon PostgreSQL backend")
 
 # Configure CORS to communicate with Next.js frontend
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+if allowed_origins_env:
+    origins.extend([o.strip() for o in allowed_origins_env.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
