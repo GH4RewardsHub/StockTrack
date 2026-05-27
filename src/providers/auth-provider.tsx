@@ -1,18 +1,19 @@
 "use client";
 
-import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth } from "@/lib/firebase/client";
 import { AppUser } from "@/types/user";
-import { getUserProfile, createUserProfile } from "@/lib/repositories/user.repository";
+import { getMeProfile } from "@/lib/repositories/user.repository";
+
+interface CustomUser {
+  uid: string;
+  email?: string;
+  displayName?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-
+  user: CustomUser | null;
   profile: AppUser | null;
-
   loading: boolean;
-
   refreshProfile: () => Promise<void>;
 }
 
@@ -24,56 +25,62 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<CustomUser | null>(null);
   const [profile, setProfile] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        setLoading(true);
-
-        if (!firebaseUser) {
-          setUser(null);
-          setProfile(null);
-          return;
-        }
-
-        setUser(firebaseUser);
-
-        let userProfile = await getUserProfile(firebaseUser.uid);
-
-        if (!userProfile || !userProfile.fullName || userProfile.fullName === "Admin User") {
-          const newProfile: AppUser = {
-            uid: firebaseUser.uid,
-            fullName: firebaseUser.displayName || userProfile?.fullName || firebaseUser.email?.split("@")[0] || "Admin User",
-            email: firebaseUser.email || undefined,
-            role: "admin",
-            isActive: true,
-            businessIds: [],
-            createdAt: new Date().toISOString(),
-            last_login_at: new Date().toISOString(),
-          };
-          await createUserProfile(newProfile);
-          userProfile = newProfile;
-        }
-
-        setProfile(userProfile);
-      } catch (error) {
-        console.error("Auth provider error:", error);
-      } finally {
-        setLoading(false);
+  const initAuth = async () => {
+    try {
+      setLoading(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("stocktrack_token") : null;
+      if (!token) {
+        setUser(null);
+        setProfile(null);
+        return;
       }
-    });
 
-    return unsubscribe;
+      const userProfile = await getMeProfile();
+      if (!userProfile) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("stocktrack_token");
+        }
+        setUser(null);
+        setProfile(null);
+        return;
+      }
+
+      setUser({
+        uid: userProfile.uid,
+        email: userProfile.email,
+        displayName: userProfile.fullName,
+      });
+      setProfile(userProfile);
+    } catch (error) {
+      console.error("Auth provider initialization error:", error);
+      setUser(null);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    initAuth();
   }, []);
 
   const refreshProfile = async () => {
-    if (!auth.currentUser) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("stocktrack_token") : null;
+    if (!token) return;
     try {
-      const userProfile = await getUserProfile(auth.currentUser.uid);
-      setProfile(userProfile);
+      const userProfile = await getMeProfile();
+      if (userProfile) {
+        setProfile(userProfile);
+        setUser({
+          uid: userProfile.uid,
+          email: userProfile.email,
+          displayName: userProfile.fullName,
+        });
+      }
     } catch (error) {
       console.error("Error refreshing profile:", error);
     }

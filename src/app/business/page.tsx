@@ -8,9 +8,8 @@ import {
   getUserBusinesses,
   createBusinessAndLink,
 } from "@/lib/repositories/business.repository";
-import { db } from "@/lib/firebase/client";
-import { collection, getDocs } from "firebase/firestore";
 import {
+
   Building2,
   Plus,
   ChevronRight,

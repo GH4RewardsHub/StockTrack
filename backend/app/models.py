@@ -6,9 +6,10 @@ from sqlmodel import Field, Relationship, SQLModel
 class User(SQLModel, table=True):
     __tablename__ = "users"
     
-    id: str = Field(primary_key=True) # Firebase UID
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     email: str = Field(unique=True, index=True)
     name: Optional[str] = None
+    hashed_password: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     businesses: List["Business"] = Relationship(back_populates="created_by")

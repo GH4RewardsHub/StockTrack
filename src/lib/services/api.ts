@@ -1,5 +1,4 @@
 import axios from "axios";
-import { auth } from "../firebase/client";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
@@ -7,9 +6,8 @@ const api = axios.create({
 
 api.interceptors.request.use(
   async (config) => {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const token = await currentUser.getIdToken();
+    const token = typeof window !== "undefined" ? localStorage.getItem("stocktrack_token") : null;
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;

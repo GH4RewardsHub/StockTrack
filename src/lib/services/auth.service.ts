@@ -1,19 +1,30 @@
-import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-
-import { auth } from "../firebase/client";
+import api from "./api";
 
 export const loginAdmin = async (email: string, password: string) => {
-  return signInWithEmailAndPassword(auth, email, password);
+  const response = await api.post("/api/auth/login", { email, password });
+  const { access_token } = response.data;
+  if (typeof window !== "undefined") {
+    localStorage.setItem("stocktrack_token", access_token);
+  }
+  return response.data;
 };
 
 export const registerAdmin = async (email: string, password: string, fullName: string) => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  if (fullName) {
-    await updateProfile(userCredential.user, { displayName: fullName });
+  const response = await api.post("/api/auth/register", {
+    email,
+    password,
+    name: fullName,
+  });
+  const { access_token } = response.data;
+  if (typeof window !== "undefined") {
+    localStorage.setItem("stocktrack_token", access_token);
   }
-  return userCredential;
+  return response.data;
 };
 
 export const logoutUser = async () => {
-  return signOut(auth);
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("stocktrack_token");
+    localStorage.removeItem("stocktrack_active_business_id");
+  }
 };

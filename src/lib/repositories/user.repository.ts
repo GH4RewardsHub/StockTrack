@@ -37,3 +37,27 @@ export const getUserProfile = async (uid: string) => {
   }
 };
 
+export const getMeProfile = async () => {
+  try {
+    const response = await api.get("/api/users/me");
+    const data = response.data;
+    return {
+      uid: data.id,
+      email: data.email || "",
+      displayName: data.name || "",
+      fullName: data.name || "",
+      name: data.name || "",
+      role: "admin",
+      isActive: true,
+      businessIds: [],
+      createdAt: data.created_at || new Date().toISOString(),
+      last_login_at: new Date().toISOString(),
+    } as unknown as AppUser;
+  } catch (error: any) {
+    if (error.response && (error.response.status === 401 || error.response.status === 404)) {
+      return null;
+    }
+    throw error;
+  }
+};
+

@@ -1,6 +1,9 @@
 import os
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+import uuid
+import jwt
+import bcrypt
 from fastapi import FastAPI, Depends, HTTPException, Header, status
 from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
@@ -43,6 +46,51 @@ else:
 if os.getenv("NODE_ENV") == "development" or not os.getenv("FIREBASE_AUTH_EMULATOR_HOST"):
     os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = "127.0.0.1:9099"
 
+# JWT / Bcrypt Credentials Auth Config
+JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-key-change-in-production")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")) # 7 days default
+
+def hash_password(password: str) -> str:
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    if not hashed_password:
+        return False
+    pwd_bytes = password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hashed_bytes)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return encoded_jwt
+
+def decode_access_token(token: str) -> Optional[dict]:
+    try:
+        decoded = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return decoded
+    except jwt.PyJWTError:
+        return None
+
+# Auth API Schemas
+class UserRegister(SQLModel):
+    email: str
+    password: str
+    name: Optional[str] = None
+
+class UserLogin(SQLModel):
+    email: str
+    password: str
+
 app = FastAPI(title="StockTrack API",
               description="Python FastAPI + SQLModel + Neon PostgreSQL backend")
 
@@ -63,15 +111,11 @@ app.add_middleware(
 )
 
 # Startup event to initialize DB tables
-
-
 @app.on_event("startup")
 def on_startup():
     init_db()
 
-# Authentication Dependency using Firebase ID Tokens
-
-
+# Authentication Dependency using standard JWT Tokens
 def get_current_user(
     authorization: Optional[str] = Header(None),
     session: Session = Depends(get_session)
@@ -83,38 +127,73 @@ def get_current_user(
         )
 
     token = authorization.split("Bearer ")[1]
-    try:
-        decoded_token = auth.verify_id_token(token)
-    except Exception as e:
+    decoded = decode_access_token(token)
+    if not decoded:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token verification failed: {str(e)}"
+            detail="Token verification failed or token expired"
         )
 
-    uid = decoded_token.get("uid")
-    email = decoded_token.get("email")
-    name = decoded_token.get("name")
-
-    if not uid or not email:
+    uid = decoded.get("sub")
+    if not uid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing uid or email"
+            detail="Token missing subject uid"
         )
 
-    # Check if user profile already exists in PostgreSQL database
     user = session.get(User, uid)
     if not user:
-        user = User(id=uid, email=email, name=name)
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-    elif name and not user.name:
-        user.name = name
-        session.add(user)
-        session.commit()
-        session.refresh(user)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User profile not found in database"
+        )
 
     return user
+
+# --- AUTH ENDPOINTS ---
+@app.post("/api/auth/register")
+def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
+    statement = select(User).where(User.email == user_data.email)
+    existing = session.exec(statement).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email address already registered"
+        )
+
+    hashed = hash_password(user_data.password)
+    user = User(
+        email=user_data.email,
+        name=user_data.name,
+        hashed_password=hashed
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    token = create_access_token(data={"sub": user.id})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+@app.post("/api/auth/login")
+def login_user(credentials: UserLogin, session: Session = Depends(get_session)):
+    statement = select(User).where(User.email == credentials.email)
+    user = session.exec(statement).first()
+    if not user or not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password credentials"
+        )
+
+    token = create_access_token(data={"sub": user.id})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": user
+    }
 
 # --- ENDPOINTS ---
 
