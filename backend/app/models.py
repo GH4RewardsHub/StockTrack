@@ -31,11 +31,18 @@ class Business(SQLModel, table=True):
     stock_items: List["StockItem"] = Relationship(back_populates="business")
     suppliers: List["Supplier"] = Relationship(back_populates="business")
 
+class CategoryStatus(str, Enum):
+    active = "active"
+    inactive = "inactive"
+
 class Category(SQLModel, table=True):
     __tablename__ = "categories"
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     name: str
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    status: CategoryStatus = Field(default=CategoryStatus.active)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     business_id: str = Field(foreign_key="businesses.id", ondelete="CASCADE")
