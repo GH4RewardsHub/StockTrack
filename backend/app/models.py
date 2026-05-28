@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import List, Optional
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -28,6 +29,7 @@ class Business(SQLModel, table=True):
     categories: List["Category"] = Relationship(back_populates="business")
     locations: List["Location"] = Relationship(back_populates="business")
     stock_items: List["StockItem"] = Relationship(back_populates="business")
+    suppliers: List["Supplier"] = Relationship(back_populates="business")
 
 class Category(SQLModel, table=True):
     __tablename__ = "categories"
@@ -75,3 +77,32 @@ class StockItem(SQLModel, table=True):
     
     category_id: Optional[str] = Field(default=None, foreign_key="categories.id", ondelete="SET NULL")
     category: Optional[Category] = Relationship(back_populates="stock_items")
+
+class OrderingMethod(str, Enum):
+    email = "email"
+    phone = "phone"
+    website = "website"
+    manual = "manual"
+
+class Supplier(SQLModel, table=True):
+    __tablename__ = "suppliers"
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    name: str
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address_line1: str
+    address_line2: Optional[str] = None
+    city: str
+    state_province: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: str
+    website: Optional[str] = None
+    notes: Optional[str] = None
+    ordering_method: Optional[OrderingMethod] = None
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    business_id: str = Field(foreign_key="businesses.id", ondelete="CASCADE")
+    business: Business = Relationship(back_populates="suppliers")

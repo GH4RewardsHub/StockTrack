@@ -77,3 +77,25 @@ export interface CountingOption {
 
   showOnMobile: boolean;
 }
+
+export type OrderingMethod = "email" | "phone" | "website" | "manual";
+
+export interface Supplier {
+  id: string;
+  businessId: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  stateProvince?: string;
+  postalCode?: string;
+  country: string;
+  website?: string;
+  notes?: string;
+  orderingMethod?: OrderingMethod;
+  isActive: boolean;
+  createdAt: string;
+}

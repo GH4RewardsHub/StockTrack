@@ -9,7 +9,6 @@ import {
   createBusinessAndLink,
 } from "@/lib/repositories/business.repository";
 import {
-
   Building2,
   Plus,
   ChevronRight,

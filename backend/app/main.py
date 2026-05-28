@@ -11,7 +11,7 @@ from firebase_admin import credentials, auth
 from sqlmodel import Session, select, SQLModel
 
 from app.database import init_db, get_session
-from app.models import User, Business, Category, Location, StockItem
+from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -34,7 +34,7 @@ if firebase_project_id and firebase_client_email and firebase_private_key:
         "client_email": firebase_client_email,
         "token_uri": "https://oauth2.googleapis.com/token",
     })
-    # Check if app already initialized (e.g. during testing)
+    # Check if app already initialized 
     if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
 else:
@@ -150,7 +150,7 @@ def get_current_user(
 
     return user
 
-# --- AUTH ENDPOINTS ---
+#  AUTH ENDPOINTS 
 @app.post("/api/auth/register")
 def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
     statement = select(User).where(User.email == user_data.email)
@@ -236,7 +236,7 @@ def get_user_profile(uid: str, session: Session = Depends(get_session), current_
     return user
 
 
-# --- BUSINESSES ---
+# BUSINESSES
 class BusinessCreate(SQLModel):
     name: str
 
@@ -327,7 +327,7 @@ def get_business_categories(
     return session.exec(statement).all()
 
 
-# --- LOCATIONS ---
+# LOCATIONS 
 class LocationCreate(SQLModel):
     name: str
     description: Optional[str] = None
@@ -425,6 +425,133 @@ def delete_business_location(
     session.delete(location)
     session.commit()
     return {"message": "Location deleted successfully"}
+
+
+# --- SUPPLIERS ---
+class SupplierCreate(SQLModel):
+    name: str
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address_line1: str
+    address_line2: Optional[str] = None
+    city: str
+    state_province: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: str
+    website: Optional[str] = None
+    notes: Optional[str] = None
+    ordering_method: Optional[OrderingMethod] = None
+    is_active: bool = True
+
+
+@app.post("/api/businesses/{business_id}/suppliers", response_model=Supplier)
+def create_business_supplier(
+    business_id: str,
+    data: SupplierCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    supplier = Supplier(
+        name=data.name,
+        contact_person=data.contact_person,
+        phone=data.phone,
+        email=data.email,
+        address_line1=data.address_line1,
+        address_line2=data.address_line2,
+        city=data.city,
+        state_province=data.state_province,
+        postal_code=data.postal_code,
+        country=data.country,
+        website=data.website,
+        notes=data.notes,
+        ordering_method=data.ordering_method,
+        is_active=data.is_active,
+        business_id=business_id
+    )
+    session.add(supplier)
+    session.commit()
+    session.refresh(supplier)
+    return supplier
+
+
+@app.get("/api/businesses/{business_id}/suppliers", response_model=List[Supplier])
+def get_business_suppliers(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    statement = select(Supplier).where(Supplier.business_id == business_id)
+    return session.exec(statement).all()
+
+
+@app.put("/api/businesses/{business_id}/suppliers/{supplier_id}", response_model=Supplier)
+def update_business_supplier(
+    business_id: str,
+    supplier_id: str,
+    data: SupplierCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    supplier = session.get(Supplier, supplier_id)
+    if not supplier or supplier.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    supplier.name = data.name
+    supplier.contact_person = data.contact_person
+    supplier.phone = data.phone
+    supplier.email = data.email
+    supplier.address_line1 = data.address_line1
+    supplier.address_line2 = data.address_line2
+    supplier.city = data.city
+    supplier.state_province = data.state_province
+    supplier.postal_code = data.postal_code
+    supplier.country = data.country
+    supplier.website = data.website
+    supplier.notes = data.notes
+    supplier.ordering_method = data.ordering_method
+    supplier.is_active = data.is_active
+
+    session.add(supplier)
+    session.commit()
+    session.refresh(supplier)
+    return supplier
+
+
+@app.delete("/api/businesses/{business_id}/suppliers/{supplier_id}")
+def delete_business_supplier(
+    business_id: str,
+    supplier_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    supplier = session.get(Supplier, supplier_id)
+    if not supplier or supplier.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    session.delete(supplier)
+    session.commit()
+    return {"message": "Supplier deleted successfully"}
 
 
 # --- STOCK ITEMS ---
