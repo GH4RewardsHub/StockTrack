@@ -58,6 +58,20 @@ export default function StockItemsPage() {
   const [formBaseUnit, setFormBaseUnit] = useState<BaseUnit>("pcs");
   const [formDescription, setFormDescription] = useState("");
   const [formActive, setFormActive] = useState(true);
+  const [formCostPerBaseUnit, setFormCostPerBaseUnit] = useState("");
+  const [formReorderLevelBaseQty, setFormReorderLevelBaseQty] = useState("");
+  const [formCurrentStock, setFormCurrentStock] = useState("");
+  const [formMaxStockBaseQty, setFormMaxStockBaseQty] = useState("");
+  const [formDeliveryPackaging, setFormDeliveryPackaging] = useState("");
+  const [countingOptions, setCountingOptions] = useState<{
+    id?: string;
+    levelName: string;
+    displayName: string;
+    conversionToBaseQty: number;
+    baseUnit: string;
+    sortOrder: number;
+    showOnMobile: boolean;
+  }[]>([]);
 
   const [reorderOption, setReorderOption] = useState<"same" | "different">("same");
   const [sameCapacity, setSameCapacity] = useState("");
@@ -124,6 +138,12 @@ export default function StockItemsPage() {
     setFormBaseUnit("pcs");
     setFormDescription("");
     setFormActive(true);
+    setFormCostPerBaseUnit("");
+    setFormReorderLevelBaseQty("");
+    setFormCurrentStock("");
+    setFormMaxStockBaseQty("");
+    setFormDeliveryPackaging("");
+    setCountingOptions([]);
 
     setReorderOption("same");
     setSameCapacity("");
@@ -155,6 +175,22 @@ export default function StockItemsPage() {
     setFormBaseUnit(item.baseUnit);
     setFormDescription(item.description || "");
     setFormActive(item.isActive !== false);
+    setFormCostPerBaseUnit(item.costPerBaseUnit ? String(item.costPerBaseUnit) : "");
+    setFormReorderLevelBaseQty(item.reorderLevelBaseQty ? String(item.reorderLevelBaseQty) : "");
+    setFormCurrentStock(item.currentStock ? String(item.currentStock) : "");
+    setFormMaxStockBaseQty(item.maxStockBaseQty ? String(item.maxStockBaseQty) : "");
+    setFormDeliveryPackaging(item.deliveryPackaging || "");
+    setCountingOptions(
+      (item.countingOptions || []).map((co) => ({
+        id: co.id,
+        levelName: co.levelName,
+        displayName: co.displayName,
+        conversionToBaseQty: co.conversionToBaseQty,
+        baseUnit: co.baseUnit || "pcs",
+        sortOrder: co.sortOrder,
+        showOnMobile: co.showOnMobile !== false,
+      }))
+    );
 
     const rules = item.locationRules || [];
     const isSameOption =
@@ -244,11 +280,21 @@ export default function StockItemsPage() {
         imageUrl: "",
         description: formDescription.trim(),
         baseUnit: formBaseUnit,
-        reorderLevelBaseQty: 0,
-        maxStockBaseQty: 0,
-        costPerBaseUnit: 0,
+        reorderLevelBaseQty: parseFloat(formReorderLevelBaseQty) || 0,
+        maxStockBaseQty: parseFloat(formMaxStockBaseQty) || 0,
+        costPerBaseUnit: parseFloat(formCostPerBaseUnit) || 0,
+        currentStock: parseFloat(formCurrentStock) || 0,
+        deliveryPackaging: formDeliveryPackaging || "",
         isActive: formActive,
         locationRules: rulesPayload,
+        countingOptions: countingOptions.map((co) => ({
+          levelName: co.levelName || co.displayName.toLowerCase().replace(/\s+/g, "_"),
+          displayName: co.displayName,
+          conversionToBaseQty: co.conversionToBaseQty || 1,
+          baseUnit: formBaseUnit,
+          sortOrder: co.sortOrder || 0,
+          showOnMobile: co.showOnMobile,
+        })),
       };
 
       if (editId) {
@@ -709,6 +755,242 @@ export default function StockItemsPage() {
                       onChange={(e) => setFormDescription(e.target.value)}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-4 pt-2 border-t border-zinc-100">
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#64748B] border-b border-zinc-100 pb-1">
+                    Stock Settings
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
+                        Cost per Base Unit
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400 text-xs">$</span>
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="0.00"
+                          className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 pl-7 pr-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                          value={formCostPerBaseUnit}
+                          onChange={(e) => setFormCostPerBaseUnit(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
+                        Reorder Level ({formBaseUnit})
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 px-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                        value={formReorderLevelBaseQty}
+                        onChange={(e) => setFormReorderLevelBaseQty(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
+                        Current Stock ({formBaseUnit})
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 px-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                        value={formCurrentStock}
+                        onChange={(e) => setFormCurrentStock(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
+                        Max Stock ({formBaseUnit})
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 px-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                        value={formMaxStockBaseQty}
+                        onChange={(e) => setFormMaxStockBaseQty(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
+                      Delivery Packaging
+                    </label>
+                    <div className="relative">
+                      <select
+                        className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-3.5 pr-10 text-xs text-zinc-950 focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer font-semibold"
+                        value={formDeliveryPackaging}
+                        onChange={(e) => setFormDeliveryPackaging(e.target.value)}
+                      >
+                        <option value="">Select packaging (optional)</option>
+                        <option value="Box">Box</option>
+                        <option value="Bag">Bag</option>
+                        <option value="Bottle">Bottle</option>
+                        <option value="Carton">Carton</option>
+                        <option value="Case">Case</option>
+                        <option value="Container">Container</option>
+                        <option value="Keg">Keg</option>
+                        <option value="Pack">Pack</option>
+                        <option value="Pallet">Pallet</option>
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-2 border-t border-zinc-100">
+                  <div className="flex justify-between items-center border-b border-zinc-100 pb-1">
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-[#64748B]">
+                      Counting Options
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCountingOptions((prev) => [
+                          ...prev,
+                          {
+                            levelName: "",
+                            displayName: "",
+                            conversionToBaseQty: 1,
+                            baseUnit: formBaseUnit,
+                            sortOrder: prev.length,
+                            showOnMobile: true,
+                          },
+                        ])
+                      }
+                      className="text-[#16A34A] hover:text-[#15803D] text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Plus className="h-3 w-3 stroke-[3px]" />
+                      Add Option
+                    </button>
+                  </div>
+
+                  {countingOptions.length === 0 ? (
+                    <p className="text-[10px] font-bold text-zinc-400 text-center py-2">
+                      No counting options configured. Click Add Option to configure conversion factors.
+                    </p>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {countingOptions.map((co, idx) => (
+                        <div key={idx} className="bg-zinc-50/50 border border-zinc-200 rounded-xl p-3.5 space-y-3 relative">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCountingOptions((prev) => prev.filter((_, i) => i !== idx))
+                            }
+                            className="absolute top-2.5 right-2.5 p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 cursor-pointer transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                Display Name
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. Case"
+                                className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2.5 text-xs text-zinc-950 focus:outline-none"
+                                value={co.displayName}
+                                onChange={(e) =>
+                                  setCountingOptions((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx
+                                        ? { ...item, displayName: e.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                                Conversion to Base Qty
+                              </label>
+                              <input
+                                type="number"
+                                required
+                                min="0.0001"
+                                step="any"
+                                placeholder="e.g. 24"
+                                className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2.5 text-xs text-zinc-950 focus:outline-none font-semibold"
+                                value={co.conversionToBaseQty}
+                                onChange={(e) =>
+                                  setCountingOptions((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx
+                                        ? { ...item, conversionToBaseQty: parseFloat(e.target.value) || 0 }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-1">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                id={`showOnMobile-${idx}`}
+                                className="h-3.5 w-3.5 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded cursor-pointer"
+                                checked={co.showOnMobile}
+                                onChange={(e) =>
+                                  setCountingOptions((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx
+                                        ? { ...item, showOnMobile: e.target.checked }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                              <label
+                                htmlFor={`showOnMobile-${idx}`}
+                                className="text-[10px] font-bold text-[#0F172A] cursor-pointer"
+                              >
+                                Show on Mobile
+                              </label>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                                Sort Order
+                              </span>
+                              <input
+                                type="number"
+                                required
+                                className="w-10 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1 px-1.5 text-center text-xs text-zinc-950 focus:outline-none"
+                                value={co.sortOrder}
+                                onChange={(e) =>
+                                  setCountingOptions((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx
+                                        ? { ...item, sortOrder: parseInt(e.target.value) || 0 }
+                                        : item
+                                    )
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4 pt-2">

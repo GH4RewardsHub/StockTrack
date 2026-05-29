@@ -30,6 +30,7 @@ class Business(SQLModel, table=True):
     locations: List["Location"] = Relationship(back_populates="business")
     stock_items: List["StockItem"] = Relationship(back_populates="business")
     suppliers: List["Supplier"] = Relationship(back_populates="business")
+    recipes: List["Recipe"] = Relationship(back_populates="business")
 
 class CategoryStatus(str, Enum):
     active = "active"
@@ -76,6 +77,8 @@ class StockItem(SQLModel, table=True):
     reorder_level_base_qty: float = Field(default=0.0)
     max_stock_base_qty: float = Field(default=0.0)
     cost_per_base_unit: Optional[float] = None
+    current_stock: float = Field(default=0.0)
+    delivery_packaging: Optional[str] = None
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -87,6 +90,8 @@ class StockItem(SQLModel, table=True):
     
     supplier_id: Optional[str] = Field(default=None, foreign_key="suppliers.id", ondelete="SET NULL")
     supplier: Optional["Supplier"] = Relationship(back_populates="stock_items")
+    
+    counting_options: List["CountingOption"] = Relationship(back_populates="stock_item", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class StockItemLocation(SQLModel, table=True):
     __tablename__ = "stock_item_locations"
@@ -130,4 +135,55 @@ class Supplier(SQLModel, table=True):
     business: Business = Relationship(back_populates="suppliers")
     
     stock_items: List["StockItem"] = Relationship(back_populates="supplier")
+
+class RecipeStatus(str, Enum):
+    active = "active"
+    inactive = "inactive"
+
+class Recipe(SQLModel, table=True):
+    __tablename__ = "recipes"
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    business_id: str = Field(foreign_key="businesses.id", ondelete="CASCADE")
+    recipe_name: str
+    recipe_code: Optional[str] = None
+    category_id: Optional[str] = Field(default=None, foreign_key="categories.id", ondelete="SET NULL")
+    yield_qty: float = Field(default=1.0)
+    yield_unit: str = Field(default="serving")
+    description: Optional[str] = None
+    status: RecipeStatus = Field(default=RecipeStatus.active)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    business: Business = Relationship(back_populates="recipes")
+    category: Optional[Category] = Relationship()
+    ingredients: List["RecipeIngredient"] = Relationship(back_populates="recipe", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+class RecipeIngredient(SQLModel, table=True):
+    __tablename__ = "recipe_ingredients"
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    recipe_id: str = Field(foreign_key="recipes.id", ondelete="CASCADE")
+    item_id: str = Field(foreign_key="stock_items.id", ondelete="CASCADE")
+    qty_used: float
+    unit: str
+    cost_per_unit: float
+    total_cost: float
+    
+    recipe: "Recipe" = Relationship(back_populates="ingredients")
+    item: StockItem = Relationship()
+
+class CountingOption(SQLModel, table=True):
+    __tablename__ = "counting_options"
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    item_id: str = Field(foreign_key="stock_items.id", ondelete="CASCADE")
+    business_id: str = Field(foreign_key="businesses.id", ondelete="CASCADE")
+    level_name: str
+    display_name: str
+    conversion_to_base_qty: float
+    base_unit: str
+    sort_order: int
+    show_on_mobile: bool = Field(default=True)
+    
+    stock_item: StockItem = Relationship(back_populates="counting_options")
 

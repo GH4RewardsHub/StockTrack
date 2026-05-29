@@ -11,6 +11,8 @@ const mapStockItem = (item: any): StockItem => ({
   reorderLevelBaseQty: item.reorder_level_base_qty || 0,
   maxStockBaseQty: item.max_stock_base_qty || 0,
   costPerBaseUnit: item.cost_per_base_unit || 0,
+  currentStock: item.current_stock || 0,
+  deliveryPackaging: item.delivery_packaging || "",
   isActive: item.is_active !== false,
   categoryId: item.category_id || "",
   categoryName: item.category_name || "",
@@ -29,6 +31,17 @@ const mapStockItem = (item: any): StockItem => ({
     reorderLevel: r.reorder_level || 0,
     reorderLevelUnit: r.reorder_level_unit || "",
   })),
+  countingOptions: (item.counting_options || []).map((co: any) => ({
+    id: co.id,
+    itemId: co.item_id,
+    businessId: co.business_id,
+    levelName: co.level_name,
+    displayName: co.display_name || "",
+    conversionToBaseQty: co.conversion_to_base_qty || 1,
+    baseUnit: co.base_unit || "pcs",
+    sortOrder: co.sort_order || 0,
+    showOnMobile: co.show_on_mobile !== false,
+  })),
 });
 
 export const createStockItem = async (
@@ -44,6 +57,8 @@ export const createStockItem = async (
     reorder_level_base_qty: data.reorderLevelBaseQty || 0,
     max_stock_base_qty: data.maxStockBaseQty || 0,
     cost_per_base_unit: data.costPerBaseUnit || null,
+    current_stock: data.currentStock || 0,
+    delivery_packaging: data.deliveryPackaging || null,
     is_active: data.isActive !== false,
     category_id: data.categoryId || null,
     supplier_id: data.supplierId || null,
@@ -53,6 +68,14 @@ export const createStockItem = async (
       storage_capacity_unit: r.storageCapacityUnit || null,
       reorder_level: r.reorderLevel,
       reorder_level_unit: r.reorderLevelUnit || null,
+    })),
+    counting_options: (data.countingOptions || []).map((co) => ({
+      level_name: co.levelName,
+      display_name: co.displayName,
+      conversion_to_base_qty: co.conversionToBaseQty,
+      base_unit: co.baseUnit || "pcs",
+      sort_order: co.sortOrder || 0,
+      show_on_mobile: co.showOnMobile !== false,
     })),
   });
   return mapStockItem(response.data);
@@ -77,6 +100,8 @@ export const updateStockItem = async (
     reorder_level_base_qty: data.reorderLevelBaseQty || 0,
     max_stock_base_qty: data.maxStockBaseQty || 0,
     cost_per_base_unit: data.costPerBaseUnit || null,
+    current_stock: data.currentStock || 0,
+    delivery_packaging: data.deliveryPackaging || null,
     is_active: data.isActive !== false,
     category_id: data.categoryId || null,
     supplier_id: data.supplierId || null,
@@ -86,6 +111,14 @@ export const updateStockItem = async (
       storage_capacity_unit: r.storageCapacityUnit || null,
       reorder_level: r.reorderLevel,
       reorder_level_unit: r.reorderLevelUnit || null,
+    })),
+    counting_options: (data.countingOptions || []).map((co) => ({
+      level_name: co.levelName,
+      display_name: co.displayName,
+      conversion_to_base_qty: co.conversionToBaseQty,
+      base_unit: co.baseUnit || "pcs",
+      sort_order: co.sortOrder || 0,
+      show_on_mobile: co.showOnMobile !== false,
     })),
   });
   return mapStockItem(response.data);

@@ -59,29 +59,24 @@ export interface StockItem {
   reorderLevelBaseQty: number;
   maxStockBaseQty: number;
   costPerBaseUnit?: number;
+  currentStock?: number;
+  deliveryPackaging?: string;
   isActive: boolean;
   createdAt: string;
   locationsCount?: number;
   locationRules?: LocationRule[];
+  countingOptions?: CountingOption[];
 }
 
 export interface CountingOption {
-  id: string;
-
-  itemId: string;
-
-  businessId: string;
-
+  id?: string;
+  itemId?: string;
+  businessId?: string;
   levelName: string;
-
   displayName: string;
-
   conversionToBaseQty: number;
-
   baseUnit: BaseUnit;
-
   sortOrder: number;
-
   showOnMobile: boolean;
 }
 
@@ -105,4 +100,33 @@ export interface Supplier {
   orderingMethod?: OrderingMethod;
   isActive: boolean;
   createdAt: string;
+}
+
+export interface RecipeIngredient {
+  id?: string;
+  recipeId?: string;
+  itemId: string;
+  itemName?: string;
+  qtyUsed: number;
+  unit: string;
+  costPerUnit: number;
+  totalCost: number;
+}
+
+export interface Recipe {
+  id: string;
+  businessId: string;
+  recipeName: string;
+  recipeCode?: string;
+  categoryId?: string;
+  categoryName?: string;
+  yieldQty: number;
+  yieldUnit: string;
+  description?: string;
+  status: "active" | "inactive";
+  isActive: boolean;
+  createdAt: string;
+  ingredientsCount?: number;
+  costPerServing?: number;
+  ingredients: RecipeIngredient[];
 }

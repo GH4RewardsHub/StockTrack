@@ -11,7 +11,7 @@ from firebase_admin import credentials, auth
 from sqlmodel import Session, select, SQLModel
 
 from app.database import init_db, get_session
-from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod, StockItemLocation, CategoryStatus
+from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod, StockItemLocation, CategoryStatus, Recipe, RecipeIngredient, RecipeStatus, CountingOption
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -664,6 +664,25 @@ def delete_business_supplier(
     return {"message": "Supplier deleted successfully"}
 
 
+class CountingOptionCreate(SQLModel):
+    level_name: str
+    display_name: str
+    conversion_to_base_qty: float
+    base_unit: str
+    sort_order: int
+    show_on_mobile: bool = True
+
+class CountingOptionOut(SQLModel):
+    id: str
+    item_id: str
+    business_id: str
+    level_name: str
+    display_name: str
+    conversion_to_base_qty: float
+    base_unit: str
+    sort_order: int
+    show_on_mobile: bool
+
 class LocationRuleOut(SQLModel):
     id: str
     stock_item_id: str
@@ -684,6 +703,8 @@ class StockItemOut(SQLModel):
     reorder_level_base_qty: float
     max_stock_base_qty: float
     cost_per_base_unit: Optional[float] = None
+    current_stock: float = 0.0
+    delivery_packaging: Optional[str] = None
     is_active: bool
     created_at: datetime
     business_id: str
@@ -693,6 +714,7 @@ class StockItemOut(SQLModel):
     supplier_name: Optional[str] = None
     locations_count: int = 0
     location_rules: List[LocationRuleOut] = []
+    counting_options: List[CountingOptionOut] = []
 
 class StockItemCreate(SQLModel):
     name: str
@@ -703,10 +725,13 @@ class StockItemCreate(SQLModel):
     reorder_level_base_qty: float = 0.0
     max_stock_base_qty: float = 0.0
     cost_per_base_unit: Optional[float] = None
+    current_stock: float = 0.0
+    delivery_packaging: Optional[str] = None
     is_active: bool = True
     category_id: Optional[str] = None
     supplier_id: Optional[str] = None
     location_rules: Optional[List[dict]] = None
+    counting_options: Optional[List[CountingOptionCreate]] = None
 
 @app.post("/api/businesses/{business_id}/stock-items", response_model=StockItemOut)
 def create_business_stock_item(
@@ -738,6 +763,8 @@ def create_business_stock_item(
         reorder_level_base_qty=data.reorder_level_base_qty,
         max_stock_base_qty=data.max_stock_base_qty,
         cost_per_base_unit=data.cost_per_base_unit,
+        current_stock=data.current_stock,
+        delivery_packaging=data.delivery_packaging,
         is_active=data.is_active,
         business_id=business_id,
         category_id=data.category_id,
@@ -780,6 +807,35 @@ def create_business_stock_item(
                 reorder_level_unit=sil.reorder_level_unit
             ))
 
+    counting_options_out = []
+    if data.counting_options:
+        for co in data.counting_options:
+            counting_opt = CountingOption(
+                item_id=stock_item.id,
+                business_id=business_id,
+                level_name=co.level_name,
+                display_name=co.display_name,
+                conversion_to_base_qty=co.conversion_to_base_qty,
+                base_unit=co.base_unit,
+                sort_order=co.sort_order,
+                show_on_mobile=co.show_on_mobile
+            )
+            session.add(counting_opt)
+            session.commit()
+            session.refresh(counting_opt)
+
+            counting_options_out.append(CountingOptionOut(
+                id=counting_opt.id,
+                item_id=counting_opt.item_id,
+                business_id=counting_opt.business_id,
+                level_name=counting_opt.level_name,
+                display_name=counting_opt.display_name,
+                conversion_to_base_qty=counting_opt.conversion_to_base_qty,
+                base_unit=counting_opt.base_unit,
+                sort_order=counting_opt.sort_order,
+                show_on_mobile=counting_opt.show_on_mobile
+            ))
+
     category_name = stock_item.category.name if stock_item.category else None
     supplier_name = stock_item.supplier.name if stock_item.supplier else None
 
@@ -793,6 +849,8 @@ def create_business_stock_item(
         reorder_level_base_qty=stock_item.reorder_level_base_qty,
         max_stock_base_qty=stock_item.max_stock_base_qty,
         cost_per_base_unit=stock_item.cost_per_base_unit,
+        current_stock=stock_item.current_stock,
+        delivery_packaging=stock_item.delivery_packaging,
         is_active=stock_item.is_active,
         created_at=stock_item.created_at,
         business_id=stock_item.business_id,
@@ -801,7 +859,8 @@ def create_business_stock_item(
         supplier_id=stock_item.supplier_id,
         supplier_name=supplier_name,
         locations_count=len(location_rules_out),
-        location_rules=location_rules_out
+        location_rules=location_rules_out,
+        counting_options=counting_options_out
     )
 
 @app.get("/api/businesses/{business_id}/stock-items", response_model=List[StockItemOut])
@@ -837,6 +896,21 @@ def get_business_stock_items(
                 reorder_level_unit=r.reorder_level_unit
             ))
 
+        opts = session.exec(select(CountingOption).where(CountingOption.item_id == item.id)).all()
+        counting_options_out = []
+        for o in opts:
+            counting_options_out.append(CountingOptionOut(
+                id=o.id,
+                item_id=o.item_id,
+                business_id=o.business_id,
+                level_name=o.level_name,
+                display_name=o.display_name,
+                conversion_to_base_qty=o.conversion_to_base_qty,
+                base_unit=o.base_unit,
+                sort_order=o.sort_order,
+                show_on_mobile=o.show_on_mobile
+            ))
+
         out.append(StockItemOut(
             id=item.id,
             name=item.name,
@@ -847,6 +921,8 @@ def get_business_stock_items(
             reorder_level_base_qty=item.reorder_level_base_qty,
             max_stock_base_qty=item.max_stock_base_qty,
             cost_per_base_unit=item.cost_per_base_unit,
+            current_stock=item.current_stock,
+            delivery_packaging=item.delivery_packaging,
             is_active=item.is_active,
             created_at=item.created_at,
             business_id=item.business_id,
@@ -855,7 +931,8 @@ def get_business_stock_items(
             supplier_id=item.supplier_id,
             supplier_name=supplier_name,
             locations_count=len(rules),
-            location_rules=location_rules_out
+            location_rules=location_rules_out,
+            counting_options=counting_options_out
         ))
     return out
 
@@ -893,6 +970,8 @@ def update_business_stock_item(
     stock_item.reorder_level_base_qty = data.reorder_level_base_qty
     stock_item.max_stock_base_qty = data.max_stock_base_qty
     stock_item.cost_per_base_unit = data.cost_per_base_unit
+    stock_item.current_stock = data.current_stock
+    stock_item.delivery_packaging = data.delivery_packaging
     stock_item.is_active = data.is_active
     stock_item.category_id = data.category_id
     stock_item.supplier_id = data.supplier_id
@@ -939,6 +1018,40 @@ def update_business_stock_item(
                 reorder_level_unit=sil.reorder_level_unit
             ))
 
+    existing_options = session.exec(select(CountingOption).where(CountingOption.item_id == item_id)).all()
+    for opt in existing_options:
+        session.delete(opt)
+    session.commit()
+
+    counting_options_out = []
+    if data.counting_options:
+        for co in data.counting_options:
+            counting_opt = CountingOption(
+                item_id=stock_item.id,
+                business_id=business_id,
+                level_name=co.level_name,
+                display_name=co.display_name,
+                conversion_to_base_qty=co.conversion_to_base_qty,
+                base_unit=co.base_unit,
+                sort_order=co.sort_order,
+                show_on_mobile=co.show_on_mobile
+            )
+            session.add(counting_opt)
+            session.commit()
+            session.refresh(counting_opt)
+
+            counting_options_out.append(CountingOptionOut(
+                id=counting_opt.id,
+                item_id=counting_opt.item_id,
+                business_id=counting_opt.business_id,
+                level_name=counting_opt.level_name,
+                display_name=counting_opt.display_name,
+                conversion_to_base_qty=counting_opt.conversion_to_base_qty,
+                base_unit=counting_opt.base_unit,
+                sort_order=counting_opt.sort_order,
+                show_on_mobile=counting_opt.show_on_mobile
+            ))
+
     category_name = stock_item.category.name if stock_item.category else None
     supplier_name = stock_item.supplier.name if stock_item.supplier else None
 
@@ -952,6 +1065,8 @@ def update_business_stock_item(
         reorder_level_base_qty=stock_item.reorder_level_base_qty,
         max_stock_base_qty=stock_item.max_stock_base_qty,
         cost_per_base_unit=stock_item.cost_per_base_unit,
+        current_stock=stock_item.current_stock,
+        delivery_packaging=stock_item.delivery_packaging,
         is_active=stock_item.is_active,
         created_at=stock_item.created_at,
         business_id=stock_item.business_id,
@@ -960,7 +1075,8 @@ def update_business_stock_item(
         supplier_id=stock_item.supplier_id,
         supplier_name=supplier_name,
         locations_count=len(location_rules_out),
-        location_rules=location_rules_out
+        location_rules=location_rules_out,
+        counting_options=counting_options_out
     )
 
 @app.delete("/api/businesses/{business_id}/stock-items/{item_id}")
@@ -981,6 +1097,293 @@ def delete_business_stock_item(
     session.delete(stock_item)
     session.commit()
     return {"message": "Stock item deleted successfully"}
+
+class RecipeIngredientCreate(SQLModel):
+    item_id: str
+    qty_used: float
+
+class RecipeIngredientOut(SQLModel):
+    id: str
+    recipe_id: str
+    item_id: str
+    item_name: str
+    qty_used: float
+    unit: str
+    cost_per_unit: float
+    total_cost: float
+
+class RecipeCreate(SQLModel):
+    recipe_name: str
+    recipe_code: Optional[str] = None
+    category_id: Optional[str] = None
+    yield_qty: float = 1.0
+    yield_unit: str = "serving"
+    description: Optional[str] = None
+    status: RecipeStatus = RecipeStatus.active
+    ingredients: List[RecipeIngredientCreate] = []
+
+class RecipeOut(SQLModel):
+    id: str
+    business_id: str
+    recipe_name: str
+    recipe_code: Optional[str] = None
+    category_id: Optional[str] = None
+    category_name: Optional[str] = None
+    yield_qty: float
+    yield_unit: str
+    description: Optional[str] = None
+    status: RecipeStatus
+    created_at: datetime
+    ingredients_count: int = 0
+    cost_per_serving: float = 0.0
+    ingredients: List[RecipeIngredientOut] = []
+
+@app.post("/api/businesses/{business_id}/recipes", response_model=RecipeOut)
+def create_business_recipe(
+    business_id: str,
+    data: RecipeCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+
+    if data.category_id:
+        cat = session.get(Category, data.category_id)
+        if not cat or cat.business_id != business_id:
+            raise HTTPException(status_code=400, detail="Invalid category ID")
+
+    recipe = Recipe(
+        business_id=business_id,
+        recipe_name=data.recipe_name,
+        recipe_code=data.recipe_code,
+        category_id=data.category_id,
+        yield_qty=data.yield_qty,
+        yield_unit=data.yield_unit,
+        description=data.description,
+        status=data.status
+    )
+    session.add(recipe)
+    session.commit()
+    session.refresh(recipe)
+
+    ingredients_out = []
+    total_cost = 0.0
+    for ing in data.ingredients:
+        item = session.get(StockItem, ing.item_id)
+        if not item or item.business_id != business_id:
+            continue
+        
+        cost_unit = item.cost_per_base_unit if item.cost_per_base_unit is not None else 0.0
+        tot_cost = ing.qty_used * cost_unit
+        total_cost += tot_cost
+
+        ri = RecipeIngredient(
+            recipe_id=recipe.id,
+            item_id=ing.item_id,
+            qty_used=ing.qty_used,
+            unit=item.base_unit or "pcs",
+            cost_per_unit=cost_unit,
+            total_cost=tot_cost
+        )
+        session.add(ri)
+        session.commit()
+        session.refresh(ri)
+
+        ingredients_out.append(RecipeIngredientOut(
+            id=ri.id,
+            recipe_id=ri.recipe_id,
+            item_id=ri.item_id,
+            item_name=item.name,
+            qty_used=ri.qty_used,
+            unit=ri.unit,
+            cost_per_unit=ri.cost_per_unit,
+            total_cost=ri.total_cost
+        ))
+
+    cost_serving = total_cost / data.yield_qty if data.yield_qty > 0 else 0.0
+    cat_name = recipe.category.name if recipe.category else None
+
+    return RecipeOut(
+        id=recipe.id,
+        business_id=recipe.business_id,
+        recipe_name=recipe.recipe_name,
+        recipe_code=recipe.recipe_code,
+        category_id=recipe.category_id,
+        category_name=cat_name,
+        yield_qty=recipe.yield_qty,
+        yield_unit=recipe.yield_unit,
+        description=recipe.description,
+        status=recipe.status,
+        created_at=recipe.created_at,
+        ingredients_count=len(ingredients_out),
+        cost_per_serving=cost_serving,
+        ingredients=ingredients_out
+    )
+
+@app.get("/api/businesses/{business_id}/recipes", response_model=List[RecipeOut])
+def get_business_recipes(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this business")
+
+    recipes = session.exec(select(Recipe).where(Recipe.business_id == business_id)).all()
+
+    out = []
+    for r in recipes:
+        ingredients_out = []
+        total_cost = 0.0
+        for ing in r.ingredients:
+            item = session.get(StockItem, ing.item_id)
+            item_name = item.name if item else "Unknown Item"
+            total_cost += ing.total_cost
+            ingredients_out.append(RecipeIngredientOut(
+                id=ing.id,
+                recipe_id=ing.recipe_id,
+                item_id=ing.item_id,
+                item_name=item_name,
+                qty_used=ing.qty_used,
+                unit=ing.unit,
+                cost_per_unit=ing.cost_per_unit,
+                total_cost=ing.total_cost
+            ))
+
+        cost_serving = total_cost / r.yield_qty if r.yield_qty > 0 else 0.0
+        cat_name = r.category.name if r.category else None
+
+        out.append(RecipeOut(
+            id=r.id,
+            business_id=r.business_id,
+            recipe_name=r.recipe_name,
+            recipe_code=r.recipe_code,
+            category_id=r.category_id,
+            category_name=cat_name,
+            yield_qty=r.yield_qty,
+            yield_unit=r.yield_unit,
+            description=r.description,
+            status=r.status,
+            created_at=r.created_at,
+            ingredients_count=len(ingredients_out),
+            cost_per_serving=cost_serving,
+            ingredients=ingredients_out
+        ))
+    return out
+
+@app.put("/api/businesses/{business_id}/recipes/{recipe_id}", response_model=RecipeOut)
+def update_business_recipe(
+    business_id: str,
+    recipe_id: str,
+    data: RecipeCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+
+    recipe = session.get(Recipe, recipe_id)
+    if not recipe or recipe.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    if data.category_id:
+        cat = session.get(Category, data.category_id)
+        if not cat or cat.business_id != business_id:
+            raise HTTPException(status_code=400, detail="Invalid category ID")
+
+    recipe.recipe_name = data.recipe_name
+    recipe.recipe_code = data.recipe_code
+    recipe.category_id = data.category_id
+    recipe.yield_qty = data.yield_qty
+    recipe.yield_unit = data.yield_unit
+    recipe.description = data.description
+    recipe.status = data.status
+
+    session.add(recipe)
+    session.commit()
+    session.refresh(recipe)
+
+    existing_ingredients = session.exec(select(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id)).all()
+    for ing in existing_ingredients:
+        session.delete(ing)
+    session.commit()
+
+    ingredients_out = []
+    total_cost = 0.0
+    for ing in data.ingredients:
+        item = session.get(StockItem, ing.item_id)
+        if not item or item.business_id != business_id:
+            continue
+
+        cost_unit = item.cost_per_base_unit if item.cost_per_base_unit is not None else 0.0
+        tot_cost = ing.qty_used * cost_unit
+        total_cost += tot_cost
+
+        ri = RecipeIngredient(
+            recipe_id=recipe.id,
+            item_id=ing.item_id,
+            qty_used=ing.qty_used,
+            unit=item.base_unit or "pcs",
+            cost_per_unit=cost_unit,
+            total_cost=tot_cost
+        )
+        session.add(ri)
+        session.commit()
+        session.refresh(ri)
+
+        ingredients_out.append(RecipeIngredientOut(
+            id=ri.id,
+            recipe_id=ri.recipe_id,
+            item_id=ri.item_id,
+            item_name=item.name,
+            qty_used=ri.qty_used,
+            unit=ri.unit,
+            cost_per_unit=ri.cost_per_unit,
+            total_cost=ri.total_cost
+        ))
+
+    cost_serving = total_cost / data.yield_qty if data.yield_qty > 0 else 0.0
+    cat_name = recipe.category.name if recipe.category else None
+
+    return RecipeOut(
+        id=recipe.id,
+        business_id=recipe.business_id,
+        recipe_name=recipe.recipe_name,
+        recipe_code=recipe.recipe_code,
+        category_id=recipe.category_id,
+        category_name=cat_name,
+        yield_qty=recipe.yield_qty,
+        yield_unit=recipe.yield_unit,
+        description=recipe.description,
+        status=recipe.status,
+        created_at=recipe.created_at,
+        ingredients_count=len(ingredients_out),
+        cost_per_serving=cost_serving,
+        ingredients=ingredients_out
+    )
+
+@app.delete("/api/businesses/{business_id}/recipes/{recipe_id}")
+def delete_business_recipe(
+    business_id: str,
+    recipe_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+
+    recipe = session.get(Recipe, recipe_id)
+    if not recipe or recipe.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    session.delete(recipe)
+    session.commit()
+    return {"message": "Recipe deleted successfully"}
 
 
 
