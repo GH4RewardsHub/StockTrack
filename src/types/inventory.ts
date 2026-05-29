@@ -129,4 +129,39 @@ export interface Recipe {
   ingredientsCount?: number;
   costPerServing?: number;
   ingredients: RecipeIngredient[];
+}
+
+export type StockCountStatus = "in_progress" | "completed";
+
+export interface StockCountItem {
+  id?: string;
+  sessionId?: string;
+  itemId: string;
+  itemName?: string;
+  itemSku?: string;
+  baseUnit?: string;
+  expectedQty: number;
+  countedCartons?: number;
+  countedPieces?: number;
+  countedQty?: number;
+  variance?: number;
+  costVariance?: number;
+  notes?: string;
+}
+
+export interface StockCountSession {
+  id: string;
+  businessId: string;
+  locationId?: string;
+  locationName?: string;
+  countType: string;
+  countDate: string;
+  countedByName: string;
+  status: StockCountStatus;
+  notes?: string;
+  createdAt: string;
+  completedAt?: string;
+  itemsCount?: number;
+  totalVariance?: number;
+  items?: StockCountItem[];
 }
