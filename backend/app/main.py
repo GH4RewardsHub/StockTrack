@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select, SQLModel
 
 from app.database import init_db, get_session
-from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod, StockItemLocation, CategoryStatus, Recipe, RecipeIngredient, RecipeStatus, CountingOption, StockCountSession, StockCountItem, StockCountStatus
+from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod, StockItemLocation, CategoryStatus, Recipe, RecipeIngredient, RecipeStatus, CountingOption, StockCountSession, StockCountItem, StockCountStatus, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -20,7 +20,9 @@ load_dotenv(dotenv_path=env_path)
 # JWT
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-key-change-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")) # 7 days default
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # 7 days default
+
 
 def hash_password(password: str) -> str:
     pwd_bytes = password.encode('utf-8')
@@ -28,12 +30,14 @@ def hash_password(password: str) -> str:
     hashed = bcrypt.hashpw(pwd_bytes, salt)
     return hashed.decode('utf-8')
 
+
 def verify_password(password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
     pwd_bytes = password.encode('utf-8')
     hashed_bytes = hashed_password.encode('utf-8')
     return bcrypt.checkpw(pwd_bytes, hashed_bytes)
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -45,6 +49,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
+
 def decode_access_token(token: str) -> Optional[dict]:
     try:
         decoded = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -53,14 +58,18 @@ def decode_access_token(token: str) -> Optional[dict]:
         return None
 
 # Auth API Schemas
+
+
 class UserRegister(SQLModel):
     email: str
     password: str
     name: Optional[str] = None
 
+
 class UserLogin(SQLModel):
     email: str
     password: str
+
 
 app = FastAPI(title="StockTrack API",
               description="Python FastAPI + SQLModel + Neon PostgreSQL backend")
@@ -75,18 +84,23 @@ if allowed_origins_env:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex="https://.*", # Allow any HTTPS origin dynamically (Vercel preview & production)
+    # Allow any HTTPS origin dynamically (Vercel preview & production)
+    allow_origin_regex="https://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Startup event to initialize DB tables
+
+
 @app.on_event("startup")
 def on_startup():
     init_db()
 
 # Authentication Dependency using standard JWT Tokens
+
+
 def get_current_user(
     authorization: Optional[str] = Header(None),
     session: Session = Depends(get_session)
@@ -121,7 +135,9 @@ def get_current_user(
 
     return user
 
-#  AUTH ENDPOINTS 
+#  AUTH ENDPOINTS
+
+
 @app.post("/api/auth/register")
 def register_user(user_data: UserRegister, session: Session = Depends(get_session)):
     statement = select(User).where(User.email == user_data.email)
@@ -148,6 +164,7 @@ def register_user(user_data: UserRegister, session: Session = Depends(get_sessio
         "token_type": "bearer",
         "user": user
     }
+
 
 @app.post("/api/auth/login")
 def login_user(credentials: UserLogin, session: Session = Depends(get_session)):
@@ -264,6 +281,7 @@ class CategoryCreate(SQLModel):
     icon: Optional[str] = None
     status: CategoryStatus = CategoryStatus.active
 
+
 class CategoryOut(SQLModel):
     id: str
     business_id: str
@@ -273,6 +291,7 @@ class CategoryOut(SQLModel):
     status: CategoryStatus
     created_at: datetime
     items_count: int = 0
+
 
 @app.post("/api/businesses/{business_id}/categories", response_model=CategoryOut)
 def create_business_category(
@@ -307,6 +326,7 @@ def create_business_category(
         items_count=0
     )
 
+
 @app.get("/api/businesses/{business_id}/categories", response_model=List[CategoryOut])
 def get_business_categories(
     business_id: str,
@@ -320,7 +340,7 @@ def get_business_categories(
 
     statement = select(Category).where(Category.business_id == business_id)
     categories = session.exec(statement).all()
-    
+
     has_others = any(c.name.lower() == "others" for c in categories)
     if not has_others:
         others_cat = Category(
@@ -333,7 +353,7 @@ def get_business_categories(
         session.commit()
         session.refresh(others_cat)
         categories = list(categories) + [others_cat]
-        
+
     out = []
     for c in categories:
         items_count = len([item for item in c.stock_items if item.is_active])
@@ -348,6 +368,7 @@ def get_business_categories(
             items_count=items_count
         ))
     return out
+
 
 @app.put("/api/businesses/{business_id}/categories/{category_id}", response_model=CategoryOut)
 def update_business_category(
@@ -374,8 +395,9 @@ def update_business_category(
     session.add(category)
     session.commit()
     session.refresh(category)
-    
-    items_count = len([item for item in category.stock_items if item.is_active])
+
+    items_count = len(
+        [item for item in category.stock_items if item.is_active])
     return CategoryOut(
         id=category.id,
         business_id=category.business_id,
@@ -386,6 +408,7 @@ def update_business_category(
         created_at=category.created_at,
         items_count=items_count
     )
+
 
 @app.delete("/api/businesses/{business_id}/categories/{category_id}")
 def delete_business_category(
@@ -408,7 +431,7 @@ def delete_business_category(
     return {"message": "Category deleted successfully"}
 
 
-# LOCATIONS 
+# LOCATIONS
 class LocationCreate(SQLModel):
     name: str
     description: Optional[str] = None
@@ -643,6 +666,7 @@ class CountingOptionCreate(SQLModel):
     sort_order: int
     show_on_mobile: bool = True
 
+
 class CountingOptionOut(SQLModel):
     id: str
     item_id: str
@@ -654,6 +678,7 @@ class CountingOptionOut(SQLModel):
     sort_order: int
     show_on_mobile: bool
 
+
 class LocationRuleOut(SQLModel):
     id: str
     stock_item_id: str
@@ -663,6 +688,7 @@ class LocationRuleOut(SQLModel):
     storage_capacity_unit: Optional[str] = None
     reorder_level: float
     reorder_level_unit: Optional[str] = None
+
 
 class StockItemOut(SQLModel):
     id: str
@@ -687,6 +713,7 @@ class StockItemOut(SQLModel):
     location_rules: List[LocationRuleOut] = []
     counting_options: List[CountingOptionOut] = []
 
+
 class StockItemCreate(SQLModel):
     name: str
     sku: Optional[str] = None
@@ -704,6 +731,7 @@ class StockItemCreate(SQLModel):
     location_rules: Optional[List[dict]] = None
     counting_options: Optional[List[CountingOptionCreate]] = None
 
+
 @app.post("/api/businesses/{business_id}/stock-items", response_model=StockItemOut)
 def create_business_stock_item(
     business_id: str,
@@ -713,17 +741,20 @@ def create_business_stock_item(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     if data.category_id:
         category = session.get(Category, data.category_id)
         if not category or category.business_id != business_id:
-            raise HTTPException(status_code=400, detail="Invalid category ID for this business")
+            raise HTTPException(
+                status_code=400, detail="Invalid category ID for this business")
 
     if data.supplier_id:
         supplier = session.get(Supplier, data.supplier_id)
         if not supplier or supplier.business_id != business_id:
-            raise HTTPException(status_code=400, detail="Invalid supplier ID for this business")
+            raise HTTPException(
+                status_code=400, detail="Invalid supplier ID for this business")
 
     stock_item = StockItem(
         name=data.name,
@@ -834,6 +865,7 @@ def create_business_stock_item(
         counting_options=counting_options_out
     )
 
+
 @app.get("/api/businesses/{business_id}/stock-items", response_model=List[StockItemOut])
 def get_business_stock_items(
     business_id: str,
@@ -842,16 +874,19 @@ def get_business_stock_items(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
 
-    items = session.exec(select(StockItem).where(StockItem.business_id == business_id)).all()
+    items = session.exec(select(StockItem).where(
+        StockItem.business_id == business_id)).all()
 
     out = []
     for item in items:
         category_name = item.category.name if item.category else None
         supplier_name = item.supplier.name if item.supplier else None
 
-        rules = session.exec(select(StockItemLocation).where(StockItemLocation.stock_item_id == item.id)).all()
+        rules = session.exec(select(StockItemLocation).where(
+            StockItemLocation.stock_item_id == item.id)).all()
         location_rules_out = []
         for r in rules:
             loc = session.get(Location, r.location_id)
@@ -867,7 +902,8 @@ def get_business_stock_items(
                 reorder_level_unit=r.reorder_level_unit
             ))
 
-        opts = session.exec(select(CountingOption).where(CountingOption.item_id == item.id)).all()
+        opts = session.exec(select(CountingOption).where(
+            CountingOption.item_id == item.id)).all()
         counting_options_out = []
         for o in opts:
             counting_options_out.append(CountingOptionOut(
@@ -907,6 +943,7 @@ def get_business_stock_items(
         ))
     return out
 
+
 @app.put("/api/businesses/{business_id}/stock-items/{item_id}", response_model=StockItemOut)
 def update_business_stock_item(
     business_id: str,
@@ -917,7 +954,8 @@ def update_business_stock_item(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     stock_item = session.get(StockItem, item_id)
     if not stock_item or stock_item.business_id != business_id:
@@ -926,12 +964,14 @@ def update_business_stock_item(
     if data.category_id:
         category = session.get(Category, data.category_id)
         if not category or category.business_id != business_id:
-            raise HTTPException(status_code=400, detail="Invalid category ID for this business")
+            raise HTTPException(
+                status_code=400, detail="Invalid category ID for this business")
 
     if data.supplier_id:
         supplier = session.get(Supplier, data.supplier_id)
         if not supplier or supplier.business_id != business_id:
-            raise HTTPException(status_code=400, detail="Invalid supplier ID for this business")
+            raise HTTPException(
+                status_code=400, detail="Invalid supplier ID for this business")
 
     stock_item.name = data.name
     stock_item.sku = data.sku
@@ -951,7 +991,8 @@ def update_business_stock_item(
     session.commit()
     session.refresh(stock_item)
 
-    existing_rules = session.exec(select(StockItemLocation).where(StockItemLocation.stock_item_id == item_id)).all()
+    existing_rules = session.exec(select(StockItemLocation).where(
+        StockItemLocation.stock_item_id == item_id)).all()
     for rule in existing_rules:
         session.delete(rule)
     session.commit()
@@ -989,7 +1030,8 @@ def update_business_stock_item(
                 reorder_level_unit=sil.reorder_level_unit
             ))
 
-    existing_options = session.exec(select(CountingOption).where(CountingOption.item_id == item_id)).all()
+    existing_options = session.exec(select(CountingOption).where(
+        CountingOption.item_id == item_id)).all()
     for opt in existing_options:
         session.delete(opt)
     session.commit()
@@ -1050,6 +1092,7 @@ def update_business_stock_item(
         counting_options=counting_options_out
     )
 
+
 @app.delete("/api/businesses/{business_id}/stock-items/{item_id}")
 def delete_business_stock_item(
     business_id: str,
@@ -1059,7 +1102,8 @@ def delete_business_stock_item(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     stock_item = session.get(StockItem, item_id)
     if not stock_item or stock_item.business_id != business_id:
@@ -1069,9 +1113,11 @@ def delete_business_stock_item(
     session.commit()
     return {"message": "Stock item deleted successfully"}
 
+
 class RecipeIngredientCreate(SQLModel):
     item_id: str
     qty_used: float
+
 
 class RecipeIngredientOut(SQLModel):
     id: str
@@ -1083,6 +1129,7 @@ class RecipeIngredientOut(SQLModel):
     cost_per_unit: float
     total_cost: float
 
+
 class RecipeCreate(SQLModel):
     recipe_name: str
     recipe_code: Optional[str] = None
@@ -1092,6 +1139,7 @@ class RecipeCreate(SQLModel):
     description: Optional[str] = None
     status: RecipeStatus = RecipeStatus.active
     ingredients: List[RecipeIngredientCreate] = []
+
 
 class RecipeOut(SQLModel):
     id: str
@@ -1109,6 +1157,7 @@ class RecipeOut(SQLModel):
     cost_per_serving: float = 0.0
     ingredients: List[RecipeIngredientOut] = []
 
+
 @app.post("/api/businesses/{business_id}/recipes", response_model=RecipeOut)
 def create_business_recipe(
     business_id: str,
@@ -1118,7 +1167,8 @@ def create_business_recipe(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     if data.category_id:
         cat = session.get(Category, data.category_id)
@@ -1145,7 +1195,7 @@ def create_business_recipe(
         item = session.get(StockItem, ing.item_id)
         if not item or item.business_id != business_id:
             continue
-        
+
         cost_unit = item.cost_per_base_unit if item.cost_per_base_unit is not None else 0.0
         tot_cost = ing.qty_used * cost_unit
         total_cost += tot_cost
@@ -1193,6 +1243,7 @@ def create_business_recipe(
         ingredients=ingredients_out
     )
 
+
 @app.get("/api/businesses/{business_id}/recipes", response_model=List[RecipeOut])
 def get_business_recipes(
     business_id: str,
@@ -1201,9 +1252,11 @@ def get_business_recipes(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
 
-    recipes = session.exec(select(Recipe).where(Recipe.business_id == business_id)).all()
+    recipes = session.exec(select(Recipe).where(
+        Recipe.business_id == business_id)).all()
 
     out = []
     for r in recipes:
@@ -1245,6 +1298,7 @@ def get_business_recipes(
         ))
     return out
 
+
 @app.put("/api/businesses/{business_id}/recipes/{recipe_id}", response_model=RecipeOut)
 def update_business_recipe(
     business_id: str,
@@ -1255,7 +1309,8 @@ def update_business_recipe(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     recipe = session.get(Recipe, recipe_id)
     if not recipe or recipe.business_id != business_id:
@@ -1278,7 +1333,8 @@ def update_business_recipe(
     session.commit()
     session.refresh(recipe)
 
-    existing_ingredients = session.exec(select(RecipeIngredient).where(RecipeIngredient.recipe_id == recipe_id)).all()
+    existing_ingredients = session.exec(select(RecipeIngredient).where(
+        RecipeIngredient.recipe_id == recipe_id)).all()
     for ing in existing_ingredients:
         session.delete(ing)
     session.commit()
@@ -1337,6 +1393,7 @@ def update_business_recipe(
         ingredients=ingredients_out
     )
 
+
 @app.delete("/api/businesses/{business_id}/recipes/{recipe_id}")
 def delete_business_recipe(
     business_id: str,
@@ -1346,7 +1403,8 @@ def delete_business_recipe(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     recipe = session.get(Recipe, recipe_id)
     if not recipe or recipe.business_id != business_id:
@@ -1355,7 +1413,6 @@ def delete_business_recipe(
     session.delete(recipe)
     session.commit()
     return {"message": "Recipe deleted successfully"}
-
 
 
 @app.get("/api/businesses/{business_id}/dashboard-metrics")
@@ -1391,11 +1448,13 @@ def get_dashboard_metrics(
         ]
     }
 
+
 class StockCountItemCreate(SQLModel):
     item_id: str
     counted_cartons: Optional[float] = None
     counted_pieces: Optional[float] = None
     notes: Optional[str] = None
+
 
 class StockCountItemOut(SQLModel):
     id: str
@@ -1412,6 +1471,7 @@ class StockCountItemOut(SQLModel):
     cost_variance: Optional[float] = None
     notes: Optional[str] = None
 
+
 class StockCountSessionCreate(SQLModel):
     location_id: Optional[str] = None
     count_type: str = "General Count"
@@ -1419,6 +1479,7 @@ class StockCountSessionCreate(SQLModel):
     counted_by_name: str
     notes: Optional[str] = None
     items: List[StockCountItemCreate] = []
+
 
 class StockCountSessionOut(SQLModel):
     id: str
@@ -1436,6 +1497,7 @@ class StockCountSessionOut(SQLModel):
     total_variance: float = 0.0
     items: List[StockCountItemOut] = []
 
+
 @app.post("/api/businesses/{business_id}/stock-counts", response_model=StockCountSessionOut)
 def create_business_stock_count(
     business_id: str,
@@ -1445,7 +1507,8 @@ def create_business_stock_count(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     location_name = None
     if data.location_id:
@@ -1467,8 +1530,9 @@ def create_business_stock_count(
     session.commit()
     session.refresh(count_sess)
 
-    active_items = session.exec(select(StockItem).where(StockItem.business_id == business_id, StockItem.is_active == True)).all()
-    
+    active_items = session.exec(select(StockItem).where(
+        StockItem.business_id == business_id, StockItem.is_active == True)).all()
+
     items_out = []
     for item in active_items:
         conversion = 1.0
@@ -1487,7 +1551,7 @@ def create_business_stock_count(
                 initial_cartons = input_item.counted_cartons
                 initial_pieces = input_item.counted_pieces
                 initial_notes = input_item.notes
-                
+
                 c_qty = 0.0
                 has_counted = False
                 if initial_cartons is not None:
@@ -1496,11 +1560,12 @@ def create_business_stock_count(
                 if initial_pieces is not None:
                     c_qty += initial_pieces
                     has_counted = True
-                
+
                 if has_counted:
                     initial_qty = c_qty
                     initial_variance = initial_qty - item.current_stock
-                    initial_cost_variance = initial_variance * (item.cost_per_base_unit or 0.0)
+                    initial_cost_variance = initial_variance * \
+                        (item.cost_per_base_unit or 0.0)
                 break
 
         count_item = StockCountItem(
@@ -1547,9 +1612,11 @@ def create_business_stock_count(
         created_at=count_sess.created_at,
         completed_at=count_sess.completed_at,
         items_count=len(items_out),
-        total_variance=sum(x.cost_variance for x in items_out if x.cost_variance is not None),
+        total_variance=sum(
+            x.cost_variance for x in items_out if x.cost_variance is not None),
         items=items_out
     )
+
 
 @app.get("/api/businesses/{business_id}/stock-counts", response_model=List[StockCountSessionOut])
 def get_business_stock_counts(
@@ -1559,9 +1626,11 @@ def get_business_stock_counts(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
 
-    sessions = session.exec(select(StockCountSession).where(StockCountSession.business_id == business_id)).all()
+    sessions = session.exec(select(StockCountSession).where(
+        StockCountSession.business_id == business_id)).all()
 
     out = []
     for s in sessions:
@@ -1605,10 +1674,12 @@ def get_business_stock_counts(
             created_at=s.created_at,
             completed_at=s.completed_at,
             items_count=len(items_out),
-            total_variance=sum(x.cost_variance for x in items_out if x.cost_variance is not None),
+            total_variance=sum(
+                x.cost_variance for x in items_out if x.cost_variance is not None),
             items=items_out
         ))
     return out
+
 
 @app.get("/api/businesses/{business_id}/stock-counts/{session_id}", response_model=StockCountSessionOut)
 def get_business_stock_count_detail(
@@ -1619,11 +1690,13 @@ def get_business_stock_count_detail(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
 
     count_sess = session.get(StockCountSession, session_id)
     if not count_sess or count_sess.business_id != business_id:
-        raise HTTPException(status_code=404, detail="Stock count session not found")
+        raise HTTPException(
+            status_code=404, detail="Stock count session not found")
 
     location_name = None
     if count_sess.location_id:
@@ -1665,9 +1738,11 @@ def get_business_stock_count_detail(
         created_at=count_sess.created_at,
         completed_at=count_sess.completed_at,
         items_count=len(items_out),
-        total_variance=sum(x.cost_variance for x in items_out if x.cost_variance is not None),
+        total_variance=sum(
+            x.cost_variance for x in items_out if x.cost_variance is not None),
         items=items_out
     )
+
 
 @app.put("/api/businesses/{business_id}/stock-counts/{session_id}", response_model=StockCountSessionOut)
 def update_business_stock_count(
@@ -1680,11 +1755,13 @@ def update_business_stock_count(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     count_sess = session.get(StockCountSession, session_id)
     if not count_sess or count_sess.business_id != business_id:
-        raise HTTPException(status_code=404, detail="Stock count session not found")
+        raise HTTPException(
+            status_code=404, detail="Stock count session not found")
 
     if data.location_id:
         loc = session.get(Location, data.location_id)
@@ -1705,7 +1782,8 @@ def update_business_stock_count(
     session.refresh(count_sess)
 
     for input_item in data.items:
-        ci = session.exec(select(StockCountItem).where(StockCountItem.session_id == session_id, StockCountItem.item_id == input_item.item_id)).first()
+        ci = session.exec(select(StockCountItem).where(
+            StockCountItem.session_id == session_id, StockCountItem.item_id == input_item.item_id)).first()
         if ci:
             item = session.get(StockItem, input_item.item_id)
             if not item:
@@ -1731,7 +1809,8 @@ def update_business_stock_count(
             if has_counted:
                 ci.counted_qty = c_qty
                 ci.variance = ci.counted_qty - ci.expected_qty
-                ci.cost_variance = ci.variance * (item.cost_per_base_unit or 0.0)
+                ci.cost_variance = ci.variance * \
+                    (item.cost_per_base_unit or 0.0)
             else:
                 ci.counted_qty = None
                 ci.variance = None
@@ -1796,9 +1875,11 @@ def update_business_stock_count(
         created_at=count_sess.created_at,
         completed_at=count_sess.completed_at,
         items_count=len(items_out),
-        total_variance=sum(x.cost_variance for x in items_out if x.cost_variance is not None),
+        total_variance=sum(
+            x.cost_variance for x in items_out if x.cost_variance is not None),
         items=items_out
     )
+
 
 @app.delete("/api/businesses/{business_id}/stock-counts/{session_id}")
 def delete_business_stock_count(
@@ -1809,13 +1890,329 @@ def delete_business_stock_count(
 ):
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this business")
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
 
     count_sess = session.get(StockCountSession, session_id)
     if not count_sess or count_sess.business_id != business_id:
-        raise HTTPException(status_code=404, detail="Stock count session not found")
+        raise HTTPException(
+            status_code=404, detail="Stock count session not found")
 
     session.delete(count_sess)
     session.commit()
     return {"message": "Stock count session deleted successfully"}
 
+
+class PurchaseOrderItemCreate(SQLModel):
+    stock_item_id: str
+    quantity: float
+    unit_cost: float
+
+
+class PurchaseOrderCreate(SQLModel):
+    supplier_id: str
+    items: List[PurchaseOrderItemCreate]
+    notes: Optional[str] = None
+
+
+class PurchaseOrderUpdate(SQLModel):
+    status: Optional[PurchaseOrderStatus] = None
+    notes: Optional[str] = None
+    items: Optional[List[PurchaseOrderItemCreate]] = None
+
+
+@app.get("/api/businesses/{business_id}/refill-suggestions")
+def get_refill_suggestions(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    items = session.exec(select(StockItem).where(
+        StockItem.business_id == business_id).where(StockItem.is_active == True)).all()
+    suggestions = []
+
+    for item in items:
+        category_name = item.category.name if item.category else "Others"
+        supplier_name = item.supplier.name if item.supplier else "No Supplier"
+        supplier_id = item.supplier_id
+        cost = item.cost_per_base_unit or 0.0
+
+        rules = session.exec(select(StockItemLocation).where(
+            StockItemLocation.stock_item_id == item.id)).all()
+        if rules:
+            for r in rules:
+                loc = session.get(Location, r.location_id)
+                loc_name = loc.name if loc else "Unknown Location"
+
+                current = item.current_stock
+                capacity = r.storage_capacity
+                reorder = r.reorder_level
+
+                if current < reorder:
+                    to_refill = max(0.0, capacity - current)
+                    est_cost = to_refill * cost
+                    suggestions.append({
+                        "stock_item_id": item.id,
+                        "stock_item_name": item.name,
+                        "sku": item.sku or "",
+                        "category_name": category_name,
+                        "supplier_id": supplier_id,
+                        "supplier_name": supplier_name,
+                        "location_id": r.location_id,
+                        "location_name": loc_name,
+                        "current_stock": current,
+                        "capacity": capacity,
+                        "reorder_level": reorder,
+                        "to_refill": to_refill,
+                        "cost_per_base_unit": cost,
+                        "est_cost": est_cost
+                    })
+        else:
+            current = item.current_stock
+            capacity = item.max_stock_base_qty
+            reorder = item.reorder_level_base_qty
+
+            if current < reorder:
+                to_refill = max(0.0, capacity - current)
+                est_cost = to_refill * cost
+                suggestions.append({
+                    "stock_item_id": item.id,
+                    "stock_item_name": item.name,
+                    "sku": item.sku or "",
+                    "category_name": category_name,
+                    "supplier_id": supplier_id,
+                    "supplier_name": supplier_name,
+                    "location_id": None,
+                    "location_name": "No Location",
+                    "current_stock": current,
+                    "capacity": capacity,
+                    "reorder_level": reorder,
+                    "to_refill": to_refill,
+                    "cost_per_base_unit": cost,
+                    "est_cost": est_cost
+                })
+
+    return suggestions
+
+
+@app.post("/api/businesses/{business_id}/purchase-orders")
+def create_purchase_order(
+    business_id: str,
+    data: PurchaseOrderCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    supplier = session.get(Supplier, data.supplier_id)
+    if not supplier or supplier.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+
+    po_count = len(session.exec(select(PurchaseOrder).where(
+        PurchaseOrder.business_id == business_id)).all())
+    po_number = f"PO-{datetime.utcnow().strftime('%Y%m%d')}-{po_count + 1:03d}"
+
+    po = PurchaseOrder(
+        business_id=business_id,
+        supplier_id=data.supplier_id,
+        po_number=po_number,
+        status=PurchaseOrderStatus.draft,
+        created_by_id=current_user.id,
+        notes=data.notes,
+        total_amount=0.0
+    )
+    session.add(po)
+    session.commit()
+    session.refresh(po)
+
+    total_amount = 0.0
+    for item in data.items:
+        stock_item = session.get(StockItem, item.stock_item_id)
+        if not stock_item or stock_item.business_id != business_id:
+            continue
+
+        total_cost = item.quantity * item.unit_cost
+        total_amount += total_cost
+
+        po_item = PurchaseOrderItem(
+            purchase_order_id=po.id,
+            stock_item_id=item.stock_item_id,
+            quantity=item.quantity,
+            unit_cost=item.unit_cost,
+            total_cost=total_cost
+        )
+        session.add(po_item)
+
+    po.total_amount = total_amount
+    session.add(po)
+    session.commit()
+    session.refresh(po)
+
+    return po
+
+
+@app.get("/api/businesses/{business_id}/purchase-orders")
+def get_purchase_orders(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    orders = session.exec(select(PurchaseOrder).where(
+        PurchaseOrder.business_id == business_id).order_by(PurchaseOrder.created_at.desc())).all()
+
+    out = []
+    for po in orders:
+        items_out = []
+        for i in po.items:
+            items_out.append({
+                "id": i.id,
+                "stock_item_id": i.stock_item_id,
+                "stock_item_name": i.stock_item.name if i.stock_item else "Unknown Item",
+                "sku": i.stock_item.sku if i.stock_item else "",
+                "quantity": i.quantity,
+                "unit_cost": i.unit_cost,
+                "total_cost": i.total_cost
+            })
+
+        out.append({
+            "id": po.id,
+            "po_number": po.po_number,
+            "supplier_id": po.supplier_id,
+            "supplier_name": po.supplier.name if po.supplier else "Unknown Supplier",
+            "status": po.status,
+            "created_at": po.created_at,
+            "total_amount": po.total_amount,
+            "notes": po.notes,
+            "items": items_out
+        })
+
+    return out
+
+
+@app.get("/api/businesses/{business_id}/purchase-orders/{po_id}")
+def get_purchase_order(
+    business_id: str,
+    po_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    po = session.get(PurchaseOrder, po_id)
+    if not po or po.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    items_out = []
+    for i in po.items:
+        items_out.append({
+            "id": i.id,
+            "stock_item_id": i.stock_item_id,
+            "stock_item_name": i.stock_item.name if i.stock_item else "Unknown Item",
+            "sku": i.stock_item.sku if i.stock_item else "",
+            "quantity": i.quantity,
+            "unit_cost": i.unit_cost,
+            "total_cost": i.total_cost
+        })
+
+    return {
+        "id": po.id,
+        "po_number": po.po_number,
+        "supplier_id": po.supplier_id,
+        "supplier_name": po.supplier.name if po.supplier else "Unknown Supplier",
+        "status": po.status,
+        "created_at": po.created_at,
+        "total_amount": po.total_amount,
+        "notes": po.notes,
+        "items": items_out
+    }
+
+
+@app.put("/api/businesses/{business_id}/purchase-orders/{po_id}")
+def update_purchase_order(
+    business_id: str,
+    po_id: str,
+    data: PurchaseOrderUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    po = session.get(PurchaseOrder, po_id)
+    if not po or po.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    if data.status is not None:
+        po.status = data.status
+
+    if data.notes is not None:
+        po.notes = data.notes
+
+    if data.items is not None:
+        for i in po.items:
+            session.delete(i)
+
+        total_amount = 0.0
+        for item in data.items:
+            stock_item = session.get(StockItem, item.stock_item_id)
+            if not stock_item or stock_item.business_id != business_id:
+                continue
+
+            total_cost = item.quantity * item.unit_cost
+            total_amount += total_cost
+
+            po_item = PurchaseOrderItem(
+                purchase_order_id=po.id,
+                stock_item_id=item.stock_item_id,
+                quantity=item.quantity,
+                unit_cost=item.unit_cost,
+                total_cost=total_cost
+            )
+            session.add(po_item)
+
+        po.total_amount = total_amount
+
+    session.add(po)
+    session.commit()
+    session.refresh(po)
+
+    return po
+
+
+@app.delete("/api/businesses/{business_id}/purchase-orders/{po_id}")
+def delete_purchase_order(
+    business_id: str,
+    po_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    po = session.get(PurchaseOrder, po_id)
+    if not po or po.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    session.delete(po)
+    session.commit()
+    return {"message": "Purchase order deleted successfully"}

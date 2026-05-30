@@ -28,10 +28,7 @@ export interface Location {
   createdAt: string;
 }
 
-export type BaseUnit =
-  | "kg"
-  | "L"
-  | "pcs";
+export type BaseUnit = "kg" | "L" | "pcs";
 
 export interface LocationRule {
   id?: string;
@@ -164,4 +161,43 @@ export interface StockCountSession {
   itemsCount?: number;
   totalVariance?: number;
   items?: StockCountItem[];
-}
+}
+
+export interface RefillSuggestion {
+  stockItemId: string;
+  stockItemName: string;
+  sku: string;
+  categoryName: string;
+  supplierId?: string;
+  supplierName: string;
+  locationId?: string;
+  locationName: string;
+  currentStock: number;
+  capacity: number;
+  reorderLevel: number;
+  toRefill: number;
+  costPerBaseUnit: number;
+  estCost: number;
+}
+
+export interface PurchaseOrderItem {
+  id?: string;
+  stockItemId: string;
+  stockItemName?: string;
+  sku?: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  supplierId: string;
+  supplierName: string;
+  status: "draft" | "sent" | "completed";
+  createdAt: string;
+  totalAmount: number;
+  notes?: string;
+  items: PurchaseOrderItem[];
+}
