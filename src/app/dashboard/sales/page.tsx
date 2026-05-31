@@ -6,7 +6,7 @@ import { useSaleStore } from "@/store/sale-store";
 import { getLocations } from "@/lib/repositories/location.repository";
 import { getRecipes } from "@/lib/repositories/recipe.repository";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
-import { Location, Recipe, Sale } from "@/types/inventory";
+import { Location, Recipe } from "@/types/inventory";
 import { Business } from "@/types/business";
 import {
   ShoppingCart,
@@ -20,7 +20,10 @@ import {
   Calendar,
   User,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  X,
+  Search,
+  Receipt,
 } from "lucide-react";
 
 export default function SalesEntryPage() {
@@ -33,7 +36,9 @@ export default function SalesEntryPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
 
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split("T")[0]);
+  const [saleDate, setSaleDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [customerName, setCustomerName] = useState("Walk-in Customer");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
@@ -41,6 +46,11 @@ export default function SalesEntryPage() {
   const [remarks, setRemarks] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [taxRate, setTaxRate] = useState(5);
+  const [showAllSales, setShowAllSales] = useState(false);
+  const [salesSearch, setSalesSearch] = useState("");
+  const [salesStatusFilter, setSalesStatusFilter] = useState<
+    "all" | "completed" | "draft"
+  >("all");
 
   const [items, setItems] = useState<
     {
@@ -121,7 +131,7 @@ export default function SalesEntryPage() {
   const handleFieldChange = (
     index: number,
     field: "quantity" | "discountPercentage" | "unitPrice",
-    val: number
+    val: number,
   ) => {
     setItems((prev) => {
       const updated = [...prev];
@@ -191,7 +201,9 @@ export default function SalesEntryPage() {
 
   const handleMockBarcodeScan = () => {
     if (recipes.length === 0) {
-      alert("No active recipes to scan. Please add recipes in Recipe Management first!");
+      alert(
+        "No active recipes to scan. Please add recipes in Recipe Management first!",
+      );
       return;
     }
     const randomIndex = Math.floor(Math.random() * recipes.length);
@@ -201,7 +213,7 @@ export default function SalesEntryPage() {
       const exists = prev.find((i) => i.recipeId === item.id);
       if (exists) {
         return prev.map((i) =>
-          i.recipeId === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.recipeId === item.id ? { ...i, quantity: i.quantity + 1 } : i,
         );
       }
       return [
@@ -240,7 +252,9 @@ export default function SalesEntryPage() {
     try {
       setSaving(true);
       const itemsPayload = items.map((i) => ({
-        recipeId: i.recipeId.startsWith("sample-") ? recipes[0]?.id || i.recipeId : i.recipeId,
+        recipeId: i.recipeId.startsWith("sample-")
+          ? recipes[0]?.id || i.recipeId
+          : i.recipeId,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
         discountPercentage: i.discountPercentage,
@@ -272,15 +286,18 @@ export default function SalesEntryPage() {
   };
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0,
+  );
   const discountTotal = items.reduce(
-    (sum, item) => sum + (item.quantity * item.unitPrice * item.discountPercentage) / 100,
-    0
+    (sum, item) =>
+      sum + (item.quantity * item.unitPrice * item.discountPercentage) / 100,
+    0,
   );
   const taxableSubtotal = subtotal - discountTotal;
   const tax = Math.round(taxableSubtotal * (taxRate / 100) * 100) / 100;
   const totalAmount = taxableSubtotal + tax;
-
 
   const activeBusiness = businesses.find((b) => b.id === activeBusinessId);
 
@@ -316,7 +333,11 @@ export default function SalesEntryPage() {
             disabled={saving}
             className="border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 rounded-xl px-5 py-2.5 text-xs font-extrabold transition-all cursor-pointer shadow-xs flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-4 w-4 text-zinc-400" />}
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4 text-zinc-400" />
+            )}
             Save as Draft
           </button>
           <button
@@ -324,7 +345,11 @@ export default function SalesEntryPage() {
             disabled={saving}
             className="bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider shadow-sm flex items-center gap-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
           >
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
             Complete Sale
           </button>
         </div>
@@ -382,7 +407,6 @@ export default function SalesEntryPage() {
           </div>
         </div>
 
-
         <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 flex items-center gap-4 shadow-xs">
           <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
             <TrendingUp className="h-5 w-5 text-amber-600" />
@@ -419,7 +443,9 @@ export default function SalesEntryPage() {
                     defaultValue={activeBusinessId || ""}
                     disabled
                   >
-                    <option value={activeBusinessId || ""}>{activeBusiness?.name || "Main Kitchen"}</option>
+                    <option value={activeBusinessId || ""}>
+                      {activeBusiness?.name || "Main Kitchen"}
+                    </option>
                   </select>
                 </div>
               </div>
@@ -439,7 +465,9 @@ export default function SalesEntryPage() {
                         {loc.name}
                       </option>
                     ))}
-                    {locations.length === 0 && <option value="">Main Kitchen</option>}
+                    {locations.length === 0 && (
+                      <option value="">Main Kitchen</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -526,11 +554,12 @@ export default function SalesEntryPage() {
                   step="0.1"
                   className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs font-bold text-zinc-700 focus:outline-none focus:border-[#16A34A]"
                   value={taxRate}
-                  onChange={(e) => setTaxRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                  onChange={(e) =>
+                    setTaxRate(Math.max(0, parseFloat(e.target.value) || 0))
+                  }
                 />
               </div>
             </div>
-
           </div>
 
           <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs space-y-4">
@@ -572,45 +601,69 @@ export default function SalesEntryPage() {
                       <th className="py-3 px-3 min-w-[200px]">Recipe</th>
                       <th className="py-3 px-2 text-center w-24">Unit</th>
                       <th className="py-3 px-2 text-center w-24">Quantity</th>
-                      <th className="py-3 px-2 text-right w-28">Unit Price (USD)</th>
-                      <th className="py-3 px-2 text-center w-24">Discount (%)</th>
-                      <th className="py-3 px-2 text-right w-28">Amount (USD)</th>
+                      <th className="py-3 px-2 text-right w-28">
+                        Unit Price (USD)
+                      </th>
+                      <th className="py-3 px-2 text-center w-24">
+                        Discount (%)
+                      </th>
+                      <th className="py-3 px-2 text-right w-28">
+                        Amount (USD)
+                      </th>
                       <th className="py-3 px-4 text-center w-12">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 font-bold text-zinc-700">
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-12 text-center text-zinc-400 font-semibold">
-                          No items added yet. Click "Add Item" or "Seed Samples" to begin.
+                        <td
+                          colSpan={8}
+                          className="py-12 text-center text-zinc-400 font-semibold"
+                        >
+                          No items added yet. Click "Add Item" or "Seed Samples"
+                          to begin.
                         </td>
                       </tr>
                     ) : (
                       items.map((item, idx) => {
                         const rowAmount =
-                          item.quantity * item.unitPrice * (1 - item.discountPercentage / 100);
+                          item.quantity *
+                          item.unitPrice *
+                          (1 - item.discountPercentage / 100);
 
                         const isSample = item.recipeId.startsWith("sample-");
 
                         return (
-                          <tr key={`${item.recipeId}-${idx}`} className="hover:bg-zinc-50/30 transition-colors">
-                            <td className="py-3 px-4 text-center text-zinc-400">{idx + 1}</td>
+                          <tr
+                            key={`${item.recipeId}-${idx}`}
+                            className="hover:bg-zinc-50/30 transition-colors"
+                          >
+                            <td className="py-3 px-4 text-center text-zinc-400">
+                              {idx + 1}
+                            </td>
                             <td className="py-2.5 px-3">
                               {isSample ? (
                                 <div className="text-zinc-800 leading-tight">
                                   <p className="font-extrabold">{item.name}</p>
-                                  <p className="text-[10px] text-zinc-400 font-medium uppercase mt-0.5">{item.recipeCode}</p>
+                                  <p className="text-[10px] text-zinc-400 font-medium uppercase mt-0.5">
+                                    {item.recipeCode}
+                                  </p>
                                 </div>
                               ) : (
                                 <select
                                   className="w-full bg-white border border-zinc-200 rounded-lg p-1.5 font-semibold text-zinc-700 focus:outline-none focus:border-[#16A34A]"
                                   value={item.recipeId}
-                                  onChange={(e) => handleItemSelect(idx, e.target.value)}
+                                  onChange={(e) =>
+                                    handleItemSelect(idx, e.target.value)
+                                  }
                                 >
                                   <option value="">Select Recipe</option>
                                   {recipes.map((rc) => (
                                     <option key={rc.id} value={rc.id}>
-                                      {rc.recipeName} {rc.recipeCode ? `(${rc.recipeCode})` : ""}
+                                      {rc.recipeName}{" "}
+                                      {rc.recipeCode
+                                        ? `(${rc.recipeCode})`
+                                        : ""}
                                     </option>
                                   ))}
                                 </select>
@@ -631,7 +684,10 @@ export default function SalesEntryPage() {
                                   handleFieldChange(
                                     idx,
                                     "quantity",
-                                    Math.max(1, parseFloat(e.target.value) || 0)
+                                    Math.max(
+                                      1,
+                                      parseFloat(e.target.value) || 0,
+                                    ),
                                   )
                                 }
                               />
@@ -644,12 +700,17 @@ export default function SalesEntryPage() {
                                   type="number"
                                   step="0.01"
                                   className="w-20 bg-white border border-zinc-200 rounded-lg p-1.5 text-right font-bold text-zinc-700 focus:outline-none focus:border-[#16A34A]"
-                                  value={item.unitPrice === 0 ? "" : item.unitPrice}
+                                  value={
+                                    item.unitPrice === 0 ? "" : item.unitPrice
+                                  }
                                   onChange={(e) =>
                                     handleFieldChange(
                                       idx,
                                       "unitPrice",
-                                      Math.max(0, parseFloat(e.target.value) || 0)
+                                      Math.max(
+                                        0,
+                                        parseFloat(e.target.value) || 0,
+                                      ),
                                     )
                                   }
                                 />
@@ -666,7 +727,13 @@ export default function SalesEntryPage() {
                                   handleFieldChange(
                                     idx,
                                     "discountPercentage",
-                                    Math.min(100, Math.max(0, parseFloat(e.target.value) || 0))
+                                    Math.min(
+                                      100,
+                                      Math.max(
+                                        0,
+                                        parseFloat(e.target.value) || 0,
+                                      ),
+                                    ),
                                   )
                                 }
                               />
@@ -727,7 +794,6 @@ export default function SalesEntryPage() {
               >
                 Edit
               </button>
-
             </div>
 
             <div className="flex items-center gap-3.5 bg-zinc-50 border border-zinc-200 rounded-xl p-3.5 shadow-2xs">
@@ -735,9 +801,13 @@ export default function SalesEntryPage() {
                 <User className="h-5 w-5 text-emerald-600" />
               </div>
               <div className="leading-tight">
-                <h4 className="text-xs font-extrabold text-[#0F172A]">{customerName}</h4>
+                <h4 className="text-xs font-extrabold text-[#0F172A]">
+                  {customerName}
+                </h4>
                 <p className="text-[10px] text-zinc-400 font-bold mt-1 uppercase tracking-wider">
-                  {customerName === "Walk-in Customer" ? "Walk-in" : "Regular customer"}
+                  {customerName === "Walk-in Customer"
+                    ? "Walk-in"
+                    : "Regular customer"}
                 </p>
               </div>
             </div>
@@ -760,11 +830,15 @@ export default function SalesEntryPage() {
 
               <div className="flex justify-between">
                 <span>Discount</span>
-                <span className="text-red-500">-${discountTotal.toFixed(2)}</span>
+                <span className="text-red-500">
+                  -${discountTotal.toFixed(2)}
+                </span>
               </div>
 
               <div className="border-t border-zinc-200/80 pt-3.5 flex justify-between items-baseline">
-                <span className="text-sm font-extrabold text-[#0F172A]">Total Amount</span>
+                <span className="text-sm font-extrabold text-[#0F172A]">
+                  Total Amount
+                </span>
                 <span className="text-2xl font-extrabold text-[#16A34A]">
                   ${totalAmount.toFixed(2)}
                 </span>
@@ -777,9 +851,12 @@ export default function SalesEntryPage() {
               <CheckCircle2 className="h-5 w-5 text-[#16A34A]" />
             </div>
             <div className="leading-tight">
-              <h4 className="text-xs font-extrabold text-[#16A34A]">Stock will be deducted from inventory</h4>
+              <h4 className="text-xs font-extrabold text-[#16A34A]">
+                Stock will be deducted from inventory
+              </h4>
               <p className="text-[10px] text-zinc-500 font-bold mt-1.5 leading-normal">
-                {totalItems} {totalItems === 1 ? "item" : "items"} will be updated across 1 location.
+                {totalItems} {totalItems === 1 ? "item" : "items"} will be
+                updated across 1 location.
               </p>
             </div>
           </div>
@@ -789,7 +866,10 @@ export default function SalesEntryPage() {
               <h3 className="text-xs font-extrabold text-[#0F172A] uppercase tracking-wider">
                 Recent Sales
               </h3>
-              <button className="text-[10px] font-extrabold text-[#16A34A] uppercase tracking-widest hover:underline cursor-pointer flex items-center gap-0.5">
+              <button
+                onClick={() => setShowAllSales(true)}
+                className="text-[10px] font-extrabold text-[#16A34A] uppercase tracking-widest hover:underline cursor-pointer flex items-center gap-0.5"
+              >
                 View All
                 <ArrowRight className="h-3 w-3 stroke-[2.5px]" />
               </button>
@@ -806,26 +886,39 @@ export default function SalesEntryPage() {
                 </div>
               ) : (
                 sales.slice(0, 5).map((sale) => {
-                  const saleDateFormatted = new Date(sale.saleDate).toLocaleDateString("en-GB", {
+                  const saleDateFormatted = new Date(
+                    sale.saleDate,
+                  ).toLocaleDateString("en-GB", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
                   });
 
                   return (
-                    <div key={sale.id} className="py-3 flex justify-between items-center hover:bg-zinc-50/50 rounded-lg px-1 transition-colors">
+                    <div
+                      key={sale.id}
+                      className="py-3 flex justify-between items-center hover:bg-zinc-50/50 rounded-lg px-1 transition-colors"
+                    >
                       <div className="leading-tight">
-                        <p className="text-xs font-extrabold text-[#0F172A]">{sale.saleNumber}</p>
+                        <p className="text-xs font-extrabold text-[#0F172A]">
+                          {sale.saleNumber}
+                        </p>
                         <p className="text-[10px] text-zinc-400 font-bold mt-1.5 flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-zinc-300" />
                           {saleDateFormatted}
                         </p>
                       </div>
                       <div className="text-right leading-tight">
-                        <p className="text-xs font-extrabold text-zinc-800">${sale.totalAmount.toFixed(2)}</p>
-                        <p className={`text-[9px] font-bold mt-1 uppercase tracking-wider inline-flex items-center gap-1 ${
-                          sale.status === "completed" ? "text-[#16A34A]" : "text-amber-600"
-                        }`}>
+                        <p className="text-xs font-extrabold text-zinc-800">
+                          ${sale.totalAmount.toFixed(2)}
+                        </p>
+                        <p
+                          className={`text-[9px] font-bold mt-1 uppercase tracking-wider inline-flex items-center gap-1 ${
+                            sale.status === "completed"
+                              ? "text-[#16A34A]"
+                              : "text-amber-600"
+                          }`}
+                        >
                           <span className="h-1 w-1 rounded-full bg-current" />
                           {sale.status}
                         </p>
@@ -845,9 +938,12 @@ export default function SalesEntryPage() {
             <div className="h-14 w-14 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-emerald-600 animate-pulse">
               <Scan className="h-7 w-7" />
             </div>
-            <h3 className="text-sm font-extrabold text-[#0F172A]">Scanning Barcode...</h3>
+            <h3 className="text-sm font-extrabold text-[#0F172A]">
+              Scanning Barcode...
+            </h3>
             <p className="text-zinc-500 text-xs font-bold leading-relaxed">
-              Locating stock packaging bar code. Please align the code inside the frame.
+              Locating stock packaging bar code. Please align the code inside
+              the frame.
             </p>
             <div className="h-1 bg-zinc-100 rounded-full overflow-hidden w-full relative">
               <div className="absolute inset-y-0 left-0 bg-[#16A34A] rounded-full animate-[progress_1.5s_ease-in-out_infinite] w-1/3" />
@@ -855,6 +951,191 @@ export default function SalesEntryPage() {
           </div>
         </div>
       )}
+
+      {showAllSales &&
+        (() => {
+          const filtered = sales.filter((s) => {
+            const matchesStatus =
+              salesStatusFilter === "all" || s.status === salesStatusFilter;
+            const q = salesSearch.toLowerCase();
+            const matchesSearch =
+              !q ||
+              (s.saleNumber || "").toLowerCase().includes(q) ||
+              (s.customerName || "").toLowerCase().includes(q) ||
+              (s.locationName || "").toLowerCase().includes(q);
+            return matchesStatus && matchesSearch;
+          });
+
+          return (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowAllSales(false);
+              }}
+            >
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-zinc-200">
+               
+                <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                      <Receipt className="h-4.5 w-4.5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-extrabold text-[#0F172A]">
+                        All Sales
+                      </h2>
+                      <p className="text-[10px] text-zinc-400 font-bold mt-0.5">
+                        {sales.length} total record
+                        {sales.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAllSales(false)}
+                    className="h-8 w-8 rounded-lg hover:bg-zinc-100 flex items-center justify-center text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="px-6 py-3 border-b border-zinc-100 flex flex-col sm:flex-row gap-3 shrink-0 bg-zinc-50/50">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by sale number, customer, or location..."
+                      value={salesSearch}
+                      onChange={(e) => setSalesSearch(e.target.value)}
+                      className="w-full pl-8 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-semibold text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-[#16A34A]"
+                    />
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    {(["all", "completed", "draft"] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setSalesStatusFilter(f)}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                          salesStatusFilter === f
+                            ? "bg-[#16A34A] text-white shadow-sm"
+                            : "bg-white border border-zinc-200 text-zinc-500 hover:border-zinc-300"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <Receipt className="h-10 w-10 text-zinc-200 mb-3" />
+                      <p className="text-sm font-bold text-zinc-400">
+                        No sales found
+                      </p>
+                      <p className="text-[10px] text-zinc-300 mt-1 font-semibold">
+                        {salesSearch || salesStatusFilter !== "all"
+                          ? "Try adjusting your filters."
+                          : "No sales recorded yet."}
+                      </p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="sticky top-0 bg-white z-10">
+                        <tr className="border-b border-zinc-200 text-[10px] uppercase font-extrabold tracking-wider text-[#64748B]">
+                          <th className="py-3 px-6">Sale #</th>
+                          <th className="py-3 px-4">Date</th>
+                          <th className="py-3 px-4">Customer</th>
+                          <th className="py-3 px-4">Location</th>
+                          <th className="py-3 px-4 text-center">Items</th>
+                          <th className="py-3 px-4">Payment</th>
+                          <th className="py-3 px-4 text-right">Total</th>
+                          <th className="py-3 px-6 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {filtered.map((sale) => {
+                          const formattedDate = sale.saleDate
+                            ? new Date(sale.saleDate).toLocaleDateString(
+                                "en-GB",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )
+                            : "—";
+                          return (
+                            <tr
+                              key={sale.id}
+                              className="hover:bg-zinc-50/60 transition-colors"
+                            >
+                              <td className="py-3.5 px-6 font-extrabold text-[#0F172A]">
+                                {sale.saleNumber || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 font-bold text-zinc-500">
+                                <span className="flex items-center gap-1.5">
+                                  <Calendar className="h-3 w-3 text-zinc-300 shrink-0" />
+                                  {formattedDate}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-bold text-zinc-700">
+                                <span className="flex items-center gap-1.5">
+                                  <User className="h-3 w-3 text-zinc-300 shrink-0" />
+                                  {sale.customerName || "Walk-in Customer"}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-bold text-zinc-500">
+                                {sale.locationName || (
+                                  <span className="text-zinc-300">—</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="bg-zinc-100 border border-zinc-200 text-zinc-600 px-2 py-0.5 rounded-md text-[10px] font-extrabold">
+                                  {sale.itemsCount ?? sale.items?.length ?? 0}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-bold text-zinc-500 capitalize">
+                                {sale.paymentMethod || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 text-right font-extrabold text-[#0F172A]">
+                                ${sale.totalAmount.toFixed(2)}
+                              </td>
+                              <td className="py-3.5 px-6 text-center">
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                                    sale.status === "completed"
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      : "bg-amber-50 text-amber-700 border-amber-200"
+                                  }`}
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                  {sale.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                <div className="px-6 py-3 border-t border-zinc-100 bg-zinc-50/50 flex items-center justify-between shrink-0">
+                  <span className="text-[10px] text-zinc-400 font-bold">
+                    Showing {filtered.length} of {sales.length} records
+                  </span>
+                  <button
+                    onClick={() => setShowAllSales(false)}
+                    className="text-xs font-extrabold text-zinc-500 hover:text-zinc-800 border border-zinc-200 bg-white hover:bg-zinc-50 px-4 py-1.5 rounded-xl transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }
