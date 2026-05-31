@@ -1,0 +1,1 @@
+# Stock items service package
