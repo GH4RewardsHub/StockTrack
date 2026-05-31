@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select, SQLModel
 
 from app.database import init_db, get_session
-from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod, StockItemLocation, CategoryStatus, Recipe, RecipeIngredient, RecipeStatus, CountingOption, StockCountSession, StockCountItem, StockCountStatus, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus
+from app.models import User, Business, Category, Location, StockItem, Supplier, OrderingMethod, StockItemLocation, CategoryStatus, Recipe, RecipeIngredient, RecipeStatus, CountingOption, StockCountSession, StockCountItem, StockCountStatus, PurchaseOrder, PurchaseOrderItem, PurchaseOrderStatus, Delivery, DeliveryItem, DeliveryStatus
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -780,12 +780,42 @@ def create_business_stock_item(
             if not loc or loc.business_id != business_id:
                 continue
 
+            storage_capacity = float(rule.get("storage_capacity", 0.0))
+            reorder_level = float(rule.get("reorder_level", 0.0))
+
+            if storage_capacity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Storage capacity ({storage_capacity}) must be greater than zero at location {loc.name}"
+                )
+            if reorder_level < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Reorder level ({reorder_level}) cannot be negative at location {loc.name}"
+                )
+            if data.current_stock < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Current stock cannot be negative"
+                )
+
+            if reorder_level >= storage_capacity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Reorder level ({reorder_level}) must be less than storage capacity ({storage_capacity}) at location {loc.name}"
+                )
+            if data.current_stock >= storage_capacity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Current stock ({data.current_stock}) must be less than storage capacity ({storage_capacity}) at location {loc.name}"
+                )
+
             sil = StockItemLocation(
                 stock_item_id=stock_item.id,
                 location_id=loc_id,
-                storage_capacity=float(rule.get("storage_capacity", 0.0)),
+                storage_capacity=storage_capacity,
                 storage_capacity_unit=rule.get("storage_capacity_unit"),
-                reorder_level=float(rule.get("reorder_level", 0.0)),
+                reorder_level=reorder_level,
                 reorder_level_unit=rule.get("reorder_level_unit")
             )
             session.add(sil)
@@ -995,12 +1025,42 @@ def update_business_stock_item(
             if not loc or loc.business_id != business_id:
                 continue
 
+            storage_capacity = float(rule.get("storage_capacity", 0.0))
+            reorder_level = float(rule.get("reorder_level", 0.0))
+
+            if storage_capacity <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Storage capacity ({storage_capacity}) must be greater than zero at location {loc.name}"
+                )
+            if reorder_level < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Reorder level ({reorder_level}) cannot be negative at location {loc.name}"
+                )
+            if data.current_stock < 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Current stock cannot be negative"
+                )
+
+            if reorder_level >= storage_capacity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Reorder level ({reorder_level}) must be less than storage capacity ({storage_capacity}) at location {loc.name}"
+                )
+            if data.current_stock >= storage_capacity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Current stock ({data.current_stock}) must be less than storage capacity ({storage_capacity}) at location {loc.name}"
+                )
+
             sil = StockItemLocation(
                 stock_item_id=stock_item.id,
                 location_id=loc_id,
-                storage_capacity=float(rule.get("storage_capacity", 0.0)),
+                storage_capacity=storage_capacity,
                 storage_capacity_unit=rule.get("storage_capacity_unit"),
-                reorder_level=float(rule.get("reorder_level", 0.0)),
+                reorder_level=reorder_level,
                 reorder_level_unit=rule.get("reorder_level_unit")
             )
             session.add(sil)
@@ -1413,8 +1473,25 @@ def get_dashboard_metrics(
             status_code=403, detail="Not authorized to access this business")
 
     active_items = [item for item in business.stock_items if item.is_active]
-    low_stock = [
-        item for item in active_items if item.reorder_level_base_qty > 10]
+
+    low_stock = []
+    for item in active_items:
+        rules = session.exec(select(StockItemLocation).where(
+            StockItemLocation.stock_item_id == item.id)).all()
+        if any(item.current_stock < r.reorder_level for r in rules):
+            low_stock.append(item)
+
+    low_stock_out = []
+    for item in low_stock[:3]:
+        rules = session.exec(select(StockItemLocation).where(
+            StockItemLocation.stock_item_id == item.id)).all()
+        max_reorder = max([r.reorder_level for r in rules] or [0.0])
+        low_stock_out.append({
+            "id": item.id,
+            "name": item.name,
+            "reorderLevelBaseQty": max_reorder,
+            "baseUnit": item.base_unit
+        })
 
     return {
         "totalItems": len(active_items),
@@ -1423,16 +1500,9 @@ def get_dashboard_metrics(
         "recentCountCount": 0,
         "varianceAvg": 1.8 if len(active_items) > 0 else 0.0,
         "recentSessions": [],
-        "lowStockItems": [
-            {
-                "id": item.id,
-                "name": item.name,
-                "reorderLevelBaseQty": item.reorder_level_base_qty,
-                "baseUnit": item.base_unit
-            }
-            for item in active_items[:3]
-        ]
+        "lowStockItems": low_stock_out
     }
+
 
 
 class StockCountItemCreate(SQLModel):
@@ -1897,6 +1967,7 @@ class PurchaseOrderItemCreate(SQLModel):
 
 class PurchaseOrderCreate(SQLModel):
     supplier_id: str
+    location_id: Optional[str] = None
     items: List[PurchaseOrderItemCreate]
     notes: Optional[str] = None
 
@@ -1904,6 +1975,7 @@ class PurchaseOrderCreate(SQLModel):
 class PurchaseOrderUpdate(SQLModel):
     status: Optional[PurchaseOrderStatus] = None
     notes: Optional[str] = None
+    location_id: Optional[str] = None
     items: Optional[List[PurchaseOrderItemCreate]] = None
 
 
@@ -1939,31 +2011,6 @@ def get_refill_suggestions(
                 capacity = r.storage_capacity
                 reorder = r.reorder_level
 
-                if current < reorder:
-                    to_refill = max(0.0, capacity - current)
-                    est_cost = to_refill * cost
-                    suggestions.append({
-                        "stock_item_id": item.id,
-                        "stock_item_name": item.name,
-                        "sku": item.sku or "",
-                        "category_name": category_name,
-                        "supplier_id": supplier_id,
-                        "supplier_name": supplier_name,
-                        "location_id": r.location_id,
-                        "location_name": loc_name,
-                        "current_stock": current,
-                        "capacity": capacity,
-                        "reorder_level": reorder,
-                        "to_refill": to_refill,
-                        "cost_per_base_unit": cost,
-                        "est_cost": est_cost
-                    })
-        else:
-            current = item.current_stock
-            capacity = item.max_stock_base_qty
-            reorder = item.reorder_level_base_qty
-
-            if current < reorder:
                 to_refill = max(0.0, capacity - current)
                 est_cost = to_refill * cost
                 suggestions.append({
@@ -1973,8 +2020,8 @@ def get_refill_suggestions(
                     "category_name": category_name,
                     "supplier_id": supplier_id,
                     "supplier_name": supplier_name,
-                    "location_id": None,
-                    "location_name": "No Location",
+                    "location_id": r.location_id,
+                    "location_name": loc_name,
                     "current_stock": current,
                     "capacity": capacity,
                     "reorder_level": reorder,
@@ -1982,6 +2029,29 @@ def get_refill_suggestions(
                     "cost_per_base_unit": cost,
                     "est_cost": est_cost
                 })
+        else:
+            current = item.current_stock
+            capacity = 0.0
+            reorder = 0.0
+
+            to_refill = max(0.0, capacity - current)
+            est_cost = to_refill * cost
+            suggestions.append({
+                "stock_item_id": item.id,
+                "stock_item_name": item.name,
+                "sku": item.sku or "",
+                "category_name": category_name,
+                "supplier_id": supplier_id,
+                "supplier_name": supplier_name,
+                "location_id": None,
+                "location_name": "No Location",
+                "current_stock": current,
+                "capacity": capacity,
+                "reorder_level": reorder,
+                "to_refill": to_refill,
+                "cost_per_base_unit": cost,
+                "est_cost": est_cost
+            })
 
     return suggestions
 
@@ -2002,6 +2072,13 @@ def create_purchase_order(
     if not supplier or supplier.business_id != business_id:
         raise HTTPException(status_code=404, detail="Supplier not found")
 
+    location_id = None
+    if data.location_id:
+        loc = session.get(Location, data.location_id)
+        if not loc or loc.business_id != business_id:
+            raise HTTPException(status_code=400, detail="Invalid location ID")
+        location_id = data.location_id
+
     po_count = len(session.exec(select(PurchaseOrder).where(
         PurchaseOrder.business_id == business_id)).all())
     po_number = f"PO-{datetime.utcnow().strftime('%Y%m%d')}-{po_count + 1:03d}"
@@ -2009,6 +2086,7 @@ def create_purchase_order(
     po = PurchaseOrder(
         business_id=business_id,
         supplier_id=data.supplier_id,
+        location_id=location_id,
         po_number=po_number,
         status=PurchaseOrderStatus.draft,
         created_by_id=current_user.id,
@@ -2078,6 +2156,8 @@ def get_purchase_orders(
             "po_number": po.po_number,
             "supplier_id": po.supplier_id,
             "supplier_name": po.supplier.name if po.supplier else "Unknown Supplier",
+            "location_id": po.location_id,
+            "location_name": po.location.name if po.location else "All Locations",
             "status": po.status,
             "created_at": po.created_at,
             "total_amount": po.total_amount,
@@ -2121,6 +2201,8 @@ def get_purchase_order(
         "po_number": po.po_number,
         "supplier_id": po.supplier_id,
         "supplier_name": po.supplier.name if po.supplier else "Unknown Supplier",
+        "location_id": po.location_id,
+        "location_name": po.location.name if po.location else "All Locations",
         "status": po.status,
         "created_at": po.created_at,
         "total_amount": po.total_amount,
@@ -2147,10 +2229,24 @@ def update_purchase_order(
         raise HTTPException(status_code=404, detail="Purchase order not found")
 
     if data.status is not None:
+        if data.status == PurchaseOrderStatus.completed:
+            raise HTTPException(
+                status_code=400,
+                detail="Purchase orders can only be marked completed by receiving a delivery against them"
+            )
         po.status = data.status
 
     if data.notes is not None:
         po.notes = data.notes
+
+    if data.location_id is not None:
+        if data.location_id == "":
+            po.location_id = None
+        else:
+            loc = session.get(Location, data.location_id)
+            if not loc or loc.business_id != business_id:
+                raise HTTPException(status_code=400, detail="Invalid location ID")
+            po.location_id = data.location_id
 
     if data.items is not None:
         for i in po.items:
@@ -2202,3 +2298,171 @@ def delete_purchase_order(
     session.delete(po)
     session.commit()
     return {"message": "Purchase order deleted successfully"}
+
+
+class DeliveryItemCreate(SQLModel):
+    stock_item_id: str
+    ordered_quantity: float
+    received_quantity: float
+    unit_cost: float
+
+
+class DeliveryCreate(SQLModel):
+    purchase_order_id: str
+    items: List[DeliveryItemCreate]
+    notes: Optional[str] = None
+
+
+@app.post("/api/businesses/{business_id}/deliveries")
+def create_delivery(
+    business_id: str,
+    data: DeliveryCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to edit this business")
+
+    po = session.get(PurchaseOrder, data.purchase_order_id)
+    if not po or po.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Purchase order not found")
+
+    if po.status != PurchaseOrderStatus.sent:
+        raise HTTPException(
+            status_code=400, detail="Deliveries can only be received against sent purchase orders")
+
+    delivery_count = len(session.exec(select(Delivery).where(
+        Delivery.business_id == business_id)).all())
+    delivery_number = f"DEL-{datetime.utcnow().strftime('%y%m%d')}-{delivery_count + 1:03d}"
+
+    any_received = any(item.received_quantity > 0 for item in data.items)
+    all_fully_received = all(item.received_quantity == item.ordered_quantity for item in data.items)
+
+    if not any_received:
+        status_val = DeliveryStatus.missing
+    elif all_fully_received:
+        status_val = DeliveryStatus.received
+    else:
+        status_val = DeliveryStatus.partially_received
+
+    total_amount = sum(item.received_quantity * item.unit_cost for item in data.items)
+
+    delivery = Delivery(
+        business_id=business_id,
+        supplier_id=po.supplier_id,
+        purchase_order_id=po.id,
+        delivery_number=delivery_number,
+        status=status_val,
+        notes=data.notes,
+        total_amount=total_amount,
+        received_by_id=current_user.id
+    )
+    session.add(delivery)
+    session.commit()
+    session.refresh(delivery)
+
+    for item in data.items:
+        stock_item = session.get(StockItem, item.stock_item_id)
+        if not stock_item or stock_item.business_id != business_id:
+            continue
+
+        stock_item.current_stock += item.received_quantity
+        session.add(stock_item)
+
+        del_item = DeliveryItem(
+            delivery_id=delivery.id,
+            stock_item_id=item.stock_item_id,
+            ordered_quantity=item.ordered_quantity,
+            received_quantity=item.received_quantity,
+            unit_cost=item.unit_cost,
+            total_cost=item.received_quantity * item.unit_cost
+        )
+        session.add(del_item)
+
+    po.status = PurchaseOrderStatus.completed
+    session.add(po)
+
+    session.commit()
+    session.refresh(delivery)
+
+    return delivery
+
+
+@app.get("/api/businesses/{business_id}/deliveries")
+def get_deliveries(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    deliveries = session.exec(select(Delivery).where(
+        Delivery.business_id == business_id).order_by(Delivery.delivery_date.desc())).all()
+
+    out = []
+    for d in deliveries:
+        out.append({
+            "id": d.id,
+            "delivery_number": d.delivery_number,
+            "po_number": d.purchase_order.po_number if d.purchase_order else "Unknown PO",
+            "purchase_order_id": d.purchase_order_id,
+            "supplier_id": d.supplier_id,
+            "supplier_name": d.supplier.name if d.supplier else "Unknown Supplier",
+            "status": d.status,
+            "delivery_date": d.delivery_date,
+            "total_amount": d.total_amount,
+            "notes": d.notes,
+            "items_count": len(d.items)
+        })
+
+    return out
+
+
+@app.get("/api/businesses/{business_id}/deliveries/{delivery_id}")
+def get_delivery(
+    business_id: str,
+    delivery_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    d = session.get(Delivery, delivery_id)
+    if not d or d.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Delivery not found")
+
+    items_out = []
+    for i in d.items:
+        items_out.append({
+            "id": i.id,
+            "stock_item_id": i.stock_item_id,
+            "stock_item_name": i.stock_item.name if i.stock_item else "Unknown Item",
+            "sku": i.stock_item.sku if i.stock_item else "",
+            "ordered_quantity": i.ordered_quantity,
+            "received_quantity": i.received_quantity,
+            "unit_cost": i.unit_cost,
+            "total_cost": i.total_cost
+        })
+
+    return {
+        "id": d.id,
+        "delivery_number": d.delivery_number,
+        "po_number": d.purchase_order.po_number if d.purchase_order else "Unknown PO",
+        "purchase_order_id": d.purchase_order_id,
+        "supplier_id": d.supplier_id,
+        "supplier_name": d.supplier.name if d.supplier else "Unknown Supplier",
+        "status": d.status,
+        "delivery_date": d.delivery_date,
+        "total_amount": d.total_amount,
+        "notes": d.notes,
+        "items": items_out
+    }
+

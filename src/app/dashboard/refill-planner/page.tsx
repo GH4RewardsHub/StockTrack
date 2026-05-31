@@ -262,6 +262,7 @@ export default function RefillPlannerPage() {
       for (const supId of supplierIds) {
         const res = await createPurchaseOrder(activeBusinessId, {
           supplierId: supId,
+          locationId: locationFilter !== "all" ? locationFilter : undefined,
           notes: "Generated from Refill Planner",
           items: itemsToOrder[supId],
         });
@@ -302,7 +303,12 @@ export default function RefillPlannerPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            {locationFilter === "all" && (
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 whitespace-nowrap">
+                Select a location to create purchase orders
+              </span>
+            )}
             <button
               onClick={() => alert("Refill spreadsheet exported successfully!")}
               className="flex-1 sm:flex-initial bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
@@ -312,8 +318,8 @@ export default function RefillPlannerPage() {
             </button>
             <button
               onClick={() => handleCreatePurchaseOrders()}
-              disabled={creatingPO}
-              className="flex-1 sm:flex-initial bg-[#16A34A] hover:bg-[#15803D] disabled:bg-zinc-300 text-white rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
+              disabled={creatingPO || locationFilter === "all"}
+              className="flex-1 sm:flex-initial bg-[#16A34A] hover:bg-[#15803D] disabled:bg-zinc-300 disabled:text-zinc-400 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               {creatingPO ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -553,8 +559,9 @@ export default function RefillPlannerPage() {
                       </span>
                       {groupBy === "supplier" && group.id && (
                         <button
+                          disabled={locationFilter === "all"}
                           onClick={() => handleCreatePurchaseOrders(group.id)}
-                          className="bg-white border border-[#16A34A] hover:bg-emerald-50 text-[#16A34A] rounded-lg px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
+                          className="bg-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:border-zinc-200 disabled:cursor-not-allowed border border-[#16A34A] hover:bg-emerald-50 text-[#16A34A] rounded-lg px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                           <FileText className="h-3 w-3" />
                           Create PO

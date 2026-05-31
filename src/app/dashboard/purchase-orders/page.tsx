@@ -55,7 +55,7 @@ export default function PurchaseOrdersPage() {
 
   const handleStatusChange = async (
     poId: string,
-    newStatus: "draft" | "sent" | "completed",
+    newStatus: "draft" | "sent",
   ) => {
     if (!activeBusinessId) return;
     try {
@@ -228,18 +228,7 @@ export default function PurchaseOrdersPage() {
                             Send
                           </button>
                         )}
-                        {po.status === "sent" && (
-                          <button
-                            onClick={() =>
-                              handleStatusChange(po.id, "completed")
-                            }
-                            className="bg-[#16A34A] hover:bg-[#15803D] text-white rounded-lg px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all"
-                            title="Mark as Received"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                            Receive
-                          </button>
-                        )}
+
 
                         <button
                           onClick={() => handleDelete(po.id)}

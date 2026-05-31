@@ -6,6 +6,8 @@ const mapPurchaseOrder = (po: any): PurchaseOrder => ({
   poNumber: po.po_number,
   supplierId: po.supplier_id,
   supplierName: po.supplier_name,
+  locationId: po.location_id,
+  locationName: po.location_name,
   status: po.status,
   createdAt: po.created_at,
   totalAmount: po.total_amount,
@@ -25,6 +27,7 @@ export const createPurchaseOrder = async (
   businessId: string,
   data: {
     supplierId: string;
+    locationId?: string;
     notes?: string;
     items: { stockItemId: string; quantity: number; unitCost: number }[];
   },
@@ -33,6 +36,7 @@ export const createPurchaseOrder = async (
     `/api/businesses/${businessId}/purchase-orders`,
     {
       supplier_id: data.supplierId,
+      location_id: data.locationId || null,
       notes: data.notes || null,
       items: data.items.map((i) => ({
         stock_item_id: i.stockItemId,

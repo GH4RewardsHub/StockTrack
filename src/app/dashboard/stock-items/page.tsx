@@ -287,19 +287,97 @@ export default function StockItemsPage() {
     if (!formBaseUnit) errors.baseUnit = true;
     if (selectedLocations.length === 0) errors.locations = true;
 
+    const currentStockVal = parseFloat(formCurrentStock) || 0;
+    if (currentStockVal < 0) {
+      errors.currentStock = true;
+      setValidationErrors(errors);
+      setError("Current stock cannot be negative.");
+      return;
+    }
+
     if (reorderOption === "same") {
-      if (!sameCapacity.trim() || isNaN(Number(sameCapacity)) || parseFloat(sameCapacity) < 0) errors.sameCapacity = true;
-      if (!sameReorder.trim() || isNaN(Number(sameReorder)) || parseFloat(sameReorder) < 0) errors.sameReorder = true;
+      const capVal = parseFloat(sameCapacity) || 0;
+      const reoVal = parseFloat(sameReorder) || 0;
+
+      if (!sameCapacity.trim() || isNaN(Number(sameCapacity)) || capVal <= 0) {
+        errors.sameCapacity = true;
+      }
+      if (!sameReorder.trim() || isNaN(Number(sameReorder)) || reoVal < 0) {
+        errors.sameReorder = true;
+      }
+
+      if (errors.sameCapacity || errors.sameReorder) {
+        setValidationErrors(errors);
+        setError("Capacity must be positive (> 0) and reorder level cannot be negative.");
+        return;
+      }
+
+      const selectedCapUnit = dynamicUnits.includes(sameCapacityUnit) ? sameCapacityUnit : dynamicUnits[0];
+      const selectedReoUnit = dynamicUnits.includes(sameReorderUnit) ? sameReorderUnit : dynamicUnits[0];
+
+      const capConverted = getConvertedValue(sameCapacity, selectedCapUnit);
+      const reoConverted = getConvertedValue(sameReorder, selectedReoUnit);
+
+      if (reoConverted >= capConverted) {
+        errors.sameReorder = true;
+        setValidationErrors(errors);
+        setError("Reorder level must be less than storage capacity.");
+        return;
+      }
+      if (currentStockVal >= capConverted) {
+        errors.currentStock = true;
+        setValidationErrors(errors);
+        setError("Current stock must be less than storage capacity.");
+        return;
+      }
     } else {
+      let limitViolation = false;
+      let limitErrorMsg = "";
       locations.filter(loc => selectedLocations.includes(loc.id)).forEach((loc) => {
         const rule = locationRulesMap[loc.id];
-        if (!rule || !rule.storageCapacity.trim() || isNaN(Number(rule.storageCapacity)) || parseFloat(rule.storageCapacity) < 0) {
+        const capVal = rule ? parseFloat(rule.storageCapacity) : 0;
+        const reoVal = rule ? parseFloat(rule.reorderLevel) : 0;
+
+        if (!rule || !rule.storageCapacity.trim() || isNaN(Number(rule.storageCapacity)) || capVal <= 0) {
           errors[`capacity_${loc.id}`] = true;
+          limitViolation = true;
+          limitErrorMsg = `Storage capacity must be positive (> 0) at ${loc.name}.`;
         }
-        if (!rule || !rule.reorderLevel.trim() || isNaN(Number(rule.reorderLevel)) || parseFloat(rule.reorderLevel) < 0) {
+        if (!rule || !rule.reorderLevel.trim() || isNaN(Number(rule.reorderLevel)) || reoVal < 0) {
           errors[`reorder_${loc.id}`] = true;
+          limitViolation = true;
+          limitErrorMsg = `Reorder level cannot be negative at ${loc.name}.`;
+        }
+
+        if (rule && !errors[`capacity_${loc.id}`] && !errors[`reorder_${loc.id}`]) {
+          const selectedCapUnit = dynamicUnits.includes(rule.storageCapacityUnit) ? rule.storageCapacityUnit : dynamicUnits[0];
+          const selectedReoUnit = dynamicUnits.includes(rule.reorderLevelUnit) ? rule.reorderLevelUnit : dynamicUnits[0];
+
+          const capConverted = getConvertedValue(rule.storageCapacity, selectedCapUnit);
+          const reoConverted = getConvertedValue(rule.reorderLevel, selectedReoUnit);
+
+          if (reoConverted >= capConverted) {
+            errors[`reorder_${loc.id}`] = true;
+            limitViolation = true;
+            limitErrorMsg = `Reorder level must be less than storage capacity at ${loc.name}.`;
+          }
+          if (currentStockVal >= capConverted) {
+            errors.currentStock = true;
+            limitViolation = true;
+            limitErrorMsg = `Current stock must be less than storage capacity at ${loc.name}.`;
+          }
         }
       });
+
+      if (limitViolation || Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        if (limitViolation) {
+          setError(limitErrorMsg);
+        } else {
+          setError("Please fill in all compulsory fields marked with an asterisk (*).");
+        }
+        return;
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -973,9 +1051,14 @@ export default function StockItemsPage() {
                       <input
                         type="number"
                         placeholder="0"
-                        className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 px-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                        className={getInputClassName("currentStock", "font-semibold")}
                         value={formCurrentStock}
-                        onChange={(e) => setFormCurrentStock(e.target.value)}
+                        onChange={(e) => {
+                          setFormCurrentStock(e.target.value);
+                          if (validationErrors.currentStock) {
+                            setValidationErrors((prev) => ({ ...prev, currentStock: false }));
+                          }
+                        }}
                       />
                     </div>
                   </div>

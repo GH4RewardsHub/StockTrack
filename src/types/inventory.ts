@@ -193,9 +193,41 @@ export interface PurchaseOrder {
   poNumber: string;
   supplierId: string;
   supplierName: string;
+  locationId?: string;
+  locationName?: string;
   status: "draft" | "sent" | "completed";
   createdAt: string;
   totalAmount: number;
   notes?: string;
   items: PurchaseOrderItem[];
 }
+
+export type DeliveryStatus = "Received" | "Partially Received" | "Missing";
+
+export interface DeliveryItem {
+  id?: string;
+  stockItemId: string;
+  stockItemName?: string;
+  sku?: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface Delivery {
+  id: string;
+  deliveryNumber: string;
+  poNumber: string;
+  purchaseOrderId: string;
+  supplierId: string;
+  supplierName: string;
+  status: DeliveryStatus;
+  deliveryDate: string;
+  totalAmount: number;
+  notes?: string;
+  itemsCount?: number;
+  items: DeliveryItem[];
+}
+
+
