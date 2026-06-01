@@ -11,6 +11,8 @@ interface LocationState {
   locations: Location[];
   loading: boolean;
   error: string | null;
+  activeLocationId: string | null;
+  setActiveLocation: (id: string | null) => void;
   fetchLocations: (businessId: string) => Promise<void>;
   addLocation: (
     businessId: string,
@@ -28,6 +30,17 @@ export const useLocationStore = create<LocationState>((set) => ({
   locations: [],
   loading: false,
   error: null,
+  activeLocationId: null,
+  setActiveLocation: (id) => {
+    set({ activeLocationId: id });
+    if (typeof window !== "undefined") {
+      if (id) {
+        localStorage.setItem("stocktrack_active_location_id", id);
+      } else {
+        localStorage.removeItem("stocktrack_active_location_id");
+      }
+    }
+  },
   fetchLocations: async (businessId) => {
     set({ loading: true, error: null });
     try {

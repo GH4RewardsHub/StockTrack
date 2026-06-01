@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { useBusinessStore } from "@/store/business-store";
+import { useLocationStore } from "@/store/location-store";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import { logoutUser } from "@/lib/services/auth.service";
 import { Business } from "@/types/business";
@@ -55,8 +56,12 @@ export default function DashboardLayout({
   const [activeBusiness, setActiveBusinessDoc] = useState<Business | null>(null);
   const [showBusinessDropdown, setShowBusinessDropdown] = useState(false);
   const [showHeaderBusinessDropdown, setShowHeaderBusinessDropdown] = useState(false);
+  const [showHeaderLocationDropdown, setShowHeaderLocationDropdown] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const { locations, activeLocationId, setActiveLocation, fetchLocations } = useLocationStore();
+  const activeLocation = locations.find((l) => l.id === activeLocationId) || null;
 
   useEffect(() => {
     if (authLoading) return;
@@ -101,6 +106,30 @@ export default function DashboardLayout({
       setActiveBusinessDoc(activeDoc);
     }
   }, [businesses, activeBusinessId]);
+
+  useEffect(() => {
+    if (activeBusinessId) {
+      fetchLocations(activeBusinessId);
+    }
+  }, [activeBusinessId, fetchLocations]);
+
+  useEffect(() => {
+    if (locations.length > 0) {
+      let currentLocId = activeLocationId;
+      if (!currentLocId && typeof window !== "undefined") {
+        const persisted = localStorage.getItem("stocktrack_active_location_id");
+        if (persisted && locations.some((loc) => loc.id === persisted)) {
+          setActiveLocation(persisted);
+          currentLocId = persisted;
+        }
+      }
+      if (!currentLocId || !locations.some((loc) => loc.id === currentLocId)) {
+        setActiveLocation(locations[0].id);
+      }
+    } else {
+      setActiveLocation(null);
+    }
+  }, [locations, activeLocationId, setActiveLocation]);
 
   const handleBusinessChange = (id: string) => {
     setActiveBusiness(id);
@@ -480,6 +509,62 @@ export default function DashboardLayout({
                 </div>
               )}
             </div>
+
+            {activeBusinessId && (
+              <>
+                <div className="h-4 w-px bg-zinc-200 hidden sm:block" />
+                <div className="relative">
+                  <button
+                    onClick={() => setShowHeaderLocationDropdown(!showHeaderLocationDropdown)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200/70 border border-zinc-200 rounded-xl text-xs font-extrabold text-[#0F172A] transition duration-200 cursor-pointer shadow-2xs"
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-[#16A34A]" />
+                    <span>{activeLocation?.name || "Select Location"}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                  </button>
+
+                  {showHeaderLocationDropdown && (
+                    <div className="absolute left-0 mt-1.5 w-52 bg-white border border-zinc-200 rounded-xl shadow-xl overflow-hidden z-30 animate-fade-in">
+                      <div className="max-h-56 overflow-y-auto py-1">
+                        {locations.map((loc) => {
+                          const isSelected = loc.id === activeLocationId;
+                          return (
+                            <button
+                              key={loc.id}
+                              onClick={() => {
+                                setActiveLocation(loc.id);
+                                setShowHeaderLocationDropdown(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors truncate cursor-pointer ${
+                                isSelected
+                                  ? "bg-[#DCFCE7] text-[#16A34A]"
+                                  : "text-zinc-700 hover:bg-zinc-100 hover:text-[#0F172A]"
+                              }`}
+                            >
+                              <span>{loc.name}</span>
+                              {isSelected && <Check className="h-3.5 w-3.5 text-[#16A34A]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="border-t border-zinc-200 p-1.5 bg-zinc-50">
+                        <a
+                          href="/dashboard/locations"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            router.push("/dashboard/locations");
+                            setShowHeaderLocationDropdown(false);
+                          }}
+                          className="w-full text-center py-2 text-[10px] uppercase font-bold tracking-wider text-[#16A34A] hover:text-[#16A34A] block hover:bg-[#DCFCE7] rounded-lg transition-colors cursor-pointer"
+                        >
+                          Manage Locations
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-5">

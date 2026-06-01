@@ -1,10 +1,21 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useBusinessStore } from "@/store/business-store";
 import { useAuth } from "@/providers/auth-provider";
+import { useBusinessStore } from "@/store/business-store";
+import { useLocationStore } from "@/store/location-store";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
-import { StockItem, Category, Supplier, Location, BaseUnit, LocationRule } from "@/types/inventory";
+import {
+  StockItem,
+  Category,
+  Supplier,
+  Location,
+  BaseUnit,
+  LocationRule,
+} from "@/types/inventory";
 import { Business } from "@/types/business";
 import {
   Package,
@@ -31,6 +42,7 @@ import { getLocations } from "@/lib/repositories/location.repository";
 
 export default function StockItemsPage() {
   const { activeBusinessId } = useBusinessStore();
+  const { activeLocationId } = useLocationStore();
   const { profile } = useAuth();
 
   const [items, setItems] = useState<StockItem[]>([]);
@@ -57,17 +69,21 @@ export default function StockItemsPage() {
   const [formActive, setFormActive] = useState(true);
   const [formCostPerBaseUnit, setFormCostPerBaseUnit] = useState("");
   const [formCurrentStock, setFormCurrentStock] = useState("");
-  const [countingOptions, setCountingOptions] = useState<{
-    id?: string;
-    levelName: string;
-    displayName: string;
-    conversionToBaseQty: number;
-    baseUnit: string;
-    sortOrder: number;
-    showOnMobile: boolean;
-  }[]>([]);
+  const [countingOptions, setCountingOptions] = useState<
+    {
+      id?: string;
+      levelName: string;
+      displayName: string;
+      conversionToBaseQty: number;
+      baseUnit: string;
+      sortOrder: number;
+      showOnMobile: boolean;
+    }[]
+  >([]);
 
-  const [reorderOption, setReorderOption] = useState<"same" | "different">("same");
+  const [reorderOption, setReorderOption] = useState<"same" | "different">(
+    "same",
+  );
   const [sameCapacity, setSameCapacity] = useState("");
   const [sameCapacityUnit, setSameCapacityUnit] = useState("Each");
   const [sameReorder, setSameReorder] = useState("");
@@ -87,11 +103,12 @@ export default function StockItemsPage() {
     >
   >({});
 
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, boolean>
+  >({});
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
 
@@ -100,7 +117,11 @@ export default function StockItemsPage() {
     dynamicUnits.push(formBaseUnit);
   }
   countingOptions.forEach((co) => {
-    if (co.displayName && co.displayName.trim() && !dynamicUnits.includes(co.displayName.trim())) {
+    if (
+      co.displayName &&
+      co.displayName.trim() &&
+      !dynamicUnits.includes(co.displayName.trim())
+    ) {
       dynamicUnits.push(co.displayName.trim());
     }
   });
@@ -111,7 +132,7 @@ export default function StockItemsPage() {
   const getConversionFactor = (unit: string) => {
     if (unit === formBaseUnit) return 1;
     const option = countingOptions.find((co) => co.displayName === unit);
-    return option ? (option.conversionToBaseQty || 1) : 1;
+    return option ? option.conversionToBaseQty || 1 : 1;
   };
 
   const getConvertedValue = (valueStr: string, unit: string) => {
@@ -123,14 +144,18 @@ export default function StockItemsPage() {
   const getInputClassName = (fieldName: string, extraClasses = "") => {
     const hasError = validationErrors[fieldName];
     return `w-full bg-white border ${
-      hasError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20" : "border-zinc-300 focus:border-[#16A34A] focus:ring-[#16A34A]"
+      hasError
+        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20"
+        : "border-zinc-300 focus:border-[#16A34A] focus:ring-[#16A34A]"
     } rounded-xl py-2 px-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 transition-all ${extraClasses}`;
   };
 
   const getSelectClassName = (fieldName: string, extraClasses = "") => {
     const hasError = validationErrors[fieldName];
     return `w-full bg-white border ${
-      hasError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20" : "border-zinc-300 focus:border-[#16A34A] focus:ring-[#16A34A]"
+      hasError
+        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20"
+        : "border-zinc-300 focus:border-[#16A34A] focus:ring-[#16A34A]"
     } rounded-xl py-2.5 pl-3.5 pr-10 text-xs text-zinc-950 focus:outline-none focus:ring-1 appearance-none cursor-pointer font-semibold transition-all ${extraClasses}`;
   };
 
@@ -141,7 +166,13 @@ export default function StockItemsPage() {
     if (!activeBusinessId) return;
     try {
       setLoading(true);
-      const [itemsList, categoriesList, suppliersList, locationsList, businessesList] = await Promise.all([
+      const [
+        itemsList,
+        categoriesList,
+        suppliersList,
+        locationsList,
+        businessesList,
+      ] = await Promise.all([
         getStockItems(activeBusinessId),
         getCategories(activeBusinessId),
         getSuppliers(activeBusinessId),
@@ -155,7 +186,8 @@ export default function StockItemsPage() {
       setLocations(locationsList.filter((l) => l.isActive !== false));
       setBusinesses(businessesList);
 
-      const activeDoc = businessesList.find((b) => b.id === activeBusinessId) || null;
+      const activeDoc =
+        businessesList.find((b) => b.id === activeBusinessId) || null;
       setActiveBusiness(activeDoc);
     } catch (err) {
       console.error(err);
@@ -200,7 +232,7 @@ export default function StockItemsPage() {
     });
     setLocationRulesMap(initialRules);
 
-    setSelectedLocations(locations.map(loc => loc.id));
+    setSelectedLocations(locations.map((loc) => loc.id));
     setError(null);
     setValidationErrors({});
     setShowDrawer(true);
@@ -215,7 +247,9 @@ export default function StockItemsPage() {
     setFormBaseUnit(item.baseUnit);
     setFormDescription(item.description || "");
     setFormActive(item.isActive !== false);
-    setFormCostPerBaseUnit(item.costPerBaseUnit ? String(item.costPerBaseUnit) : "");
+    setFormCostPerBaseUnit(
+      item.costPerBaseUnit ? String(item.costPerBaseUnit) : "",
+    );
     setFormCurrentStock(item.currentStock ? String(item.currentStock) : "");
     setCountingOptions(
       (item.countingOptions || []).map((co) => ({
@@ -226,7 +260,7 @@ export default function StockItemsPage() {
         baseUnit: co.baseUnit || "pcs",
         sortOrder: co.sortOrder,
         showOnMobile: co.showOnMobile !== false,
-      }))
+      })),
     );
 
     const rules = item.locationRules || [];
@@ -238,7 +272,7 @@ export default function StockItemsPage() {
           r.storageCapacityUnit === rules[0].storageCapacityUnit &&
           r.reorderLevel === rules[0].reorderLevel &&
           r.reorderLevelUnit === rules[0].reorderLevelUnit &&
-          r.currentStock === rules[0].currentStock
+          r.currentStock === rules[0].currentStock,
       );
 
     if (isSameOption && rules.length > 0) {
@@ -247,7 +281,11 @@ export default function StockItemsPage() {
       setSameCapacityUnit(rules[0].storageCapacityUnit || "Each");
       setSameReorder(String(rules[0].reorderLevel));
       setSameReorderUnit(rules[0].reorderLevelUnit || "Each");
-      setSameCurrentStock(rules[0].currentStock !== undefined ? String(rules[0].currentStock) : "");
+      setSameCurrentStock(
+        rules[0].currentStock !== undefined
+          ? String(rules[0].currentStock)
+          : "",
+      );
     } else {
       setReorderOption("different");
       setSameCapacity("");
@@ -265,12 +303,15 @@ export default function StockItemsPage() {
         storageCapacityUnit: existing?.storageCapacityUnit || "Each",
         reorderLevel: existing ? String(existing.reorderLevel) : "",
         reorderLevelUnit: existing?.reorderLevelUnit || "Each",
-        currentStock: existing?.currentStock !== undefined ? String(existing.currentStock) : "",
+        currentStock:
+          existing?.currentStock !== undefined
+            ? String(existing.currentStock)
+            : "",
       };
     });
     setLocationRulesMap(rulesMap);
 
-    const itemLocIds = (item.locationRules || []).map(r => r.locationId);
+    const itemLocIds = (item.locationRules || []).map((r) => r.locationId);
     setSelectedLocations(itemLocIds);
     setError(null);
     setValidationErrors({});
@@ -300,18 +341,32 @@ export default function StockItemsPage() {
       if (!sameReorder.trim() || isNaN(Number(sameReorder)) || reoVal < 0) {
         errors.sameReorder = true;
       }
-      if (!sameCurrentStock.trim() || isNaN(Number(sameCurrentStock)) || stockVal < 0) {
+      if (
+        !sameCurrentStock.trim() ||
+        isNaN(Number(sameCurrentStock)) ||
+        stockVal < 0
+      ) {
         errors.sameCurrentStock = true;
       }
 
-      if (errors.sameCapacity || errors.sameReorder || errors.sameCurrentStock) {
+      if (
+        errors.sameCapacity ||
+        errors.sameReorder ||
+        errors.sameCurrentStock
+      ) {
         setValidationErrors(errors);
-        setError("Capacity must be positive (> 0), and reorder level and current stock cannot be negative.");
+        setError(
+          "Capacity must be positive (> 0), and reorder level and current stock cannot be negative.",
+        );
         return;
       }
 
-      const selectedCapUnit = dynamicUnits.includes(sameCapacityUnit) ? sameCapacityUnit : dynamicUnits[0];
-      const selectedReoUnit = dynamicUnits.includes(sameReorderUnit) ? sameReorderUnit : dynamicUnits[0];
+      const selectedCapUnit = dynamicUnits.includes(sameCapacityUnit)
+        ? sameCapacityUnit
+        : dynamicUnits[0];
+      const selectedReoUnit = dynamicUnits.includes(sameReorderUnit)
+        ? sameReorderUnit
+        : dynamicUnits[0];
 
       const capConverted = getConvertedValue(sameCapacity, selectedCapUnit);
       const reoConverted = getConvertedValue(sameReorder, selectedReoUnit);
@@ -332,55 +387,92 @@ export default function StockItemsPage() {
     } else {
       let limitViolation = false;
       let limitErrorMsg = "";
-      locations.filter(loc => selectedLocations.includes(loc.id)).forEach((loc) => {
-        const rule = locationRulesMap[loc.id];
-        const capVal = rule ? parseFloat(rule.storageCapacity) : 0;
-        const reoVal = rule ? parseFloat(rule.reorderLevel) : 0;
-        const stockVal = rule ? parseFloat(rule.currentStock) : 0;
+      locations
+        .filter((loc) => selectedLocations.includes(loc.id))
+        .forEach((loc) => {
+          const rule = locationRulesMap[loc.id];
+          const capVal = rule ? parseFloat(rule.storageCapacity) : 0;
+          const reoVal = rule ? parseFloat(rule.reorderLevel) : 0;
+          const stockVal = rule ? parseFloat(rule.currentStock) : 0;
 
-        if (!rule || !rule.storageCapacity.trim() || isNaN(Number(rule.storageCapacity)) || capVal <= 0) {
-          errors[`capacity_${loc.id}`] = true;
-          limitViolation = true;
-          limitErrorMsg = `Storage capacity must be positive (> 0) at ${loc.name}.`;
-        }
-        if (!rule || !rule.reorderLevel.trim() || isNaN(Number(rule.reorderLevel)) || reoVal < 0) {
-          errors[`reorder_${loc.id}`] = true;
-          limitViolation = true;
-          limitErrorMsg = `Reorder level cannot be negative at ${loc.name}.`;
-        }
-        if (!rule || !rule.currentStock || !rule.currentStock.trim() || isNaN(Number(rule.currentStock)) || stockVal < 0) {
-          errors[`stock_${loc.id}`] = true;
-          limitViolation = true;
-          limitErrorMsg = `Current stock cannot be negative at ${loc.name}.`;
-        }
-
-        if (rule && !errors[`capacity_${loc.id}`] && !errors[`reorder_${loc.id}`] && !errors[`stock_${loc.id}`]) {
-          const selectedCapUnit = dynamicUnits.includes(rule.storageCapacityUnit) ? rule.storageCapacityUnit : dynamicUnits[0];
-          const selectedReoUnit = dynamicUnits.includes(rule.reorderLevelUnit) ? rule.reorderLevelUnit : dynamicUnits[0];
-
-          const capConverted = getConvertedValue(rule.storageCapacity, selectedCapUnit);
-          const reoConverted = getConvertedValue(rule.reorderLevel, selectedReoUnit);
-          const stockConverted = stockVal;
-
-          if (reoConverted >= capConverted) {
+          if (
+            !rule ||
+            !rule.storageCapacity.trim() ||
+            isNaN(Number(rule.storageCapacity)) ||
+            capVal <= 0
+          ) {
+            errors[`capacity_${loc.id}`] = true;
+            limitViolation = true;
+            limitErrorMsg = `Storage capacity must be positive (> 0) at ${loc.name}.`;
+          }
+          if (
+            !rule ||
+            !rule.reorderLevel.trim() ||
+            isNaN(Number(rule.reorderLevel)) ||
+            reoVal < 0
+          ) {
             errors[`reorder_${loc.id}`] = true;
             limitViolation = true;
-            limitErrorMsg = `Reorder level must be less than storage capacity at ${loc.name}.`;
+            limitErrorMsg = `Reorder level cannot be negative at ${loc.name}.`;
           }
-          if (stockConverted >= capConverted) {
+          if (
+            !rule ||
+            !rule.currentStock ||
+            !rule.currentStock.trim() ||
+            isNaN(Number(rule.currentStock)) ||
+            stockVal < 0
+          ) {
             errors[`stock_${loc.id}`] = true;
             limitViolation = true;
-            limitErrorMsg = `Current stock must be less than storage capacity at ${loc.name}.`;
+            limitErrorMsg = `Current stock cannot be negative at ${loc.name}.`;
           }
-        }
-      });
+
+          if (
+            rule &&
+            !errors[`capacity_${loc.id}`] &&
+            !errors[`reorder_${loc.id}`] &&
+            !errors[`stock_${loc.id}`]
+          ) {
+            const selectedCapUnit = dynamicUnits.includes(
+              rule.storageCapacityUnit,
+            )
+              ? rule.storageCapacityUnit
+              : dynamicUnits[0];
+            const selectedReoUnit = dynamicUnits.includes(rule.reorderLevelUnit)
+              ? rule.reorderLevelUnit
+              : dynamicUnits[0];
+
+            const capConverted = getConvertedValue(
+              rule.storageCapacity,
+              selectedCapUnit,
+            );
+            const reoConverted = getConvertedValue(
+              rule.reorderLevel,
+              selectedReoUnit,
+            );
+            const stockConverted = stockVal;
+
+            if (reoConverted >= capConverted) {
+              errors[`reorder_${loc.id}`] = true;
+              limitViolation = true;
+              limitErrorMsg = `Reorder level must be less than storage capacity at ${loc.name}.`;
+            }
+            if (stockConverted >= capConverted) {
+              errors[`stock_${loc.id}`] = true;
+              limitViolation = true;
+              limitErrorMsg = `Current stock must be less than storage capacity at ${loc.name}.`;
+            }
+          }
+        });
 
       if (limitViolation || Object.keys(errors).length > 0) {
         setValidationErrors(errors);
         if (limitViolation) {
           setError(limitErrorMsg);
         } else {
-          setError("Please fill in all compulsory fields marked with an asterisk (*).");
+          setError(
+            "Please fill in all compulsory fields marked with an asterisk (*).",
+          );
         }
         return;
       }
@@ -388,7 +480,9 @@ export default function StockItemsPage() {
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
-      setError("Please fill in all compulsory fields marked with an asterisk (*).");
+      setError(
+        "Please fill in all compulsory fields marked with an asterisk (*).",
+      );
       return;
     }
 
@@ -399,34 +493,20 @@ export default function StockItemsPage() {
 
       const rulesPayload: LocationRule[] = [];
       if (reorderOption === "same") {
-        const selectedCapUnit = dynamicUnits.includes(sameCapacityUnit) ? sameCapacityUnit : dynamicUnits[0];
-        const selectedReoUnit = dynamicUnits.includes(sameReorderUnit) ? sameReorderUnit : dynamicUnits[0];
+        const selectedCapUnit = dynamicUnits.includes(sameCapacityUnit)
+          ? sameCapacityUnit
+          : dynamicUnits[0];
+        const selectedReoUnit = dynamicUnits.includes(sameReorderUnit)
+          ? sameReorderUnit
+          : dynamicUnits[0];
 
         const capConverted = getConvertedValue(sameCapacity, selectedCapUnit);
         const reoConverted = getConvertedValue(sameReorder, selectedReoUnit);
         const stockConverted = parseFloat(sameCurrentStock) || 0;
 
-        locations.filter(loc => selectedLocations.includes(loc.id)).forEach((loc) => {
-          rulesPayload.push({
-            locationId: loc.id,
-            storageCapacity: capConverted,
-            storageCapacityUnit: formBaseUnit,
-            reorderLevel: reoConverted,
-            reorderLevelUnit: formBaseUnit,
-            currentStock: stockConverted,
-          });
-        });
-      } else {
-        locations.filter(loc => selectedLocations.includes(loc.id)).forEach((loc) => {
-          const rule = locationRulesMap[loc.id];
-          if (rule) {
-            const selectedCapUnit = dynamicUnits.includes(rule.storageCapacityUnit) ? rule.storageCapacityUnit : dynamicUnits[0];
-            const selectedReoUnit = dynamicUnits.includes(rule.reorderLevelUnit) ? rule.reorderLevelUnit : dynamicUnits[0];
-
-            const capConverted = getConvertedValue(rule.storageCapacity, selectedCapUnit);
-            const reoConverted = getConvertedValue(rule.reorderLevel, selectedReoUnit);
-            const stockConverted = parseFloat(rule.currentStock) || 0;
-
+        locations
+          .filter((loc) => selectedLocations.includes(loc.id))
+          .forEach((loc) => {
             rulesPayload.push({
               locationId: loc.id,
               storageCapacity: capConverted,
@@ -435,8 +515,44 @@ export default function StockItemsPage() {
               reorderLevelUnit: formBaseUnit,
               currentStock: stockConverted,
             });
-          }
-        });
+          });
+      } else {
+        locations
+          .filter((loc) => selectedLocations.includes(loc.id))
+          .forEach((loc) => {
+            const rule = locationRulesMap[loc.id];
+            if (rule) {
+              const selectedCapUnit = dynamicUnits.includes(
+                rule.storageCapacityUnit,
+              )
+                ? rule.storageCapacityUnit
+                : dynamicUnits[0];
+              const selectedReoUnit = dynamicUnits.includes(
+                rule.reorderLevelUnit,
+              )
+                ? rule.reorderLevelUnit
+                : dynamicUnits[0];
+
+              const capConverted = getConvertedValue(
+                rule.storageCapacity,
+                selectedCapUnit,
+              );
+              const reoConverted = getConvertedValue(
+                rule.reorderLevel,
+                selectedReoUnit,
+              );
+              const stockConverted = parseFloat(rule.currentStock) || 0;
+
+              rulesPayload.push({
+                locationId: loc.id,
+                storageCapacity: capConverted,
+                storageCapacityUnit: formBaseUnit,
+                reorderLevel: reoConverted,
+                reorderLevelUnit: formBaseUnit,
+                currentStock: stockConverted,
+              });
+            }
+          });
       }
 
       const itemData = {
@@ -449,11 +565,15 @@ export default function StockItemsPage() {
         description: formDescription.trim(),
         baseUnit: formBaseUnit,
         costPerBaseUnit: parseFloat(formCostPerBaseUnit) || 0,
-        currentStock: rulesPayload.reduce((sum, r) => sum + (r.currentStock || 0), 0),
+        currentStock: rulesPayload.reduce(
+          (sum, r) => sum + (r.currentStock || 0),
+          0,
+        ),
         isActive: formActive,
         locationRules: rulesPayload,
         countingOptions: countingOptions.map((co) => ({
-          levelName: co.levelName || co.displayName.toLowerCase().replace(/\s+/g, "_"),
+          levelName:
+            co.levelName || co.displayName.toLowerCase().replace(/\s+/g, "_"),
           displayName: co.displayName,
           conversionToBaseQty: co.conversionToBaseQty || 1,
           baseUnit: formBaseUnit,
@@ -497,16 +617,25 @@ export default function StockItemsPage() {
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesCategory = selectedCategoryFilter ? item.categoryId === selectedCategoryFilter : true;
-    const matchesSupplier = selectedSupplierFilter ? item.supplierId === selectedSupplierFilter : true;
+    const matchesCategory = selectedCategoryFilter
+      ? item.categoryId === selectedCategoryFilter
+      : true;
+    const matchesSupplier = selectedSupplierFilter
+      ? item.supplierId === selectedSupplierFilter
+      : true;
+    const matchesLocation = activeLocationId
+      ? item.locationRules?.some((rule) => rule.locationId === activeLocationId)
+      : true;
 
-    return matchesSearch && matchesCategory && matchesSupplier;
+    return (
+      matchesSearch && matchesCategory && matchesSupplier && matchesLocation
+    );
   });
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
   const paginatedItems = filteredItems.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const getStatusBadge = (item: StockItem) => {
@@ -519,7 +648,10 @@ export default function StockItemsPage() {
       );
     }
 
-    if (item.sku === "ITEM-C004" || item.name.toLowerCase().includes("lettuce")) {
+    if (
+      item.sku === "ITEM-C004" ||
+      item.name.toLowerCase().includes("lettuce")
+    ) {
       return (
         <span className="bg-amber-50 text-amber-600 px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider inline-flex items-center gap-1.5 border border-amber-200">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
@@ -536,7 +668,16 @@ export default function StockItemsPage() {
     );
   };
 
-  const unitsOptions = ["Each", "Pack (24)", "Carton", "Box (12)", "Pallet", "pcs", "kg", "L"];
+  const unitsOptions = [
+    "Each",
+    "Pack (24)",
+    "Carton",
+    "Box (12)",
+    "Pallet",
+    "pcs",
+    "kg",
+    "L",
+  ];
 
   if (loading) {
     return (
@@ -558,7 +699,8 @@ export default function StockItemsPage() {
               Stock Items
             </h1>
             <p className="text-[#64748B] text-xs font-bold mt-1.5">
-              Manage all your stock items, including storage capacity and reorder levels by location.
+              Manage all your stock items, including storage capacity and
+              reorder levels by location.
             </p>
           </div>
 
@@ -638,7 +780,7 @@ export default function StockItemsPage() {
           </div>
         </div>
 
-        {(error) && (
+        {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl p-3 text-center font-bold">
             {error}
           </div>
@@ -651,7 +793,8 @@ export default function StockItemsPage() {
               No stock items found
             </h3>
             <p className="text-[#64748B] text-xs mt-1 font-semibold max-w-xs leading-relaxed">
-              No registered stock items match your search filters. Click Add Stock Item to begin.
+              No registered stock items match your search filters. Click Add
+              Stock Item to begin.
             </p>
           </div>
         ) : (
@@ -665,19 +808,26 @@ export default function StockItemsPage() {
                     <th className="py-4 px-6 font-extrabold">Base Unit</th>
                     <th className="py-4 px-6 font-extrabold">Locations</th>
                     <th className="py-4 px-6 font-extrabold">Status</th>
-                    <th className="py-4 px-6 font-extrabold text-right">Actions</th>
+                    <th className="py-4 px-6 font-extrabold text-right">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 text-xs text-[#0F172A]">
                   {paginatedItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-zinc-50/40 transition-colors">
+                    <tr
+                      key={item.id}
+                      className="hover:bg-zinc-50/40 transition-colors"
+                    >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3.5">
                           <div className="h-10 w-10 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 border border-zinc-200 overflow-hidden shadow-xs">
                             {item.imageUrl ? (
-                              <img
+                              <Image
                                 src={item.imageUrl}
                                 alt={item.name}
+                                width={50}
+                                height={50}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
@@ -705,9 +855,7 @@ export default function StockItemsPage() {
                           {item.locationsCount || 0}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        {getStatusBadge(item)}
-                      </td>
+                      <td className="py-4 px-6">{getStatusBadge(item)}</td>
                       <td className="py-4 px-6 text-right relative">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
@@ -734,13 +882,19 @@ export default function StockItemsPage() {
 
             <div className="bg-zinc-50/50 border-t border-zinc-200 py-4 px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#64748B] font-semibold">
               <span>
-                Showing {filteredItems.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, filteredItems.length)} of {filteredItems.length} items
+                Showing{" "}
+                {filteredItems.length === 0
+                  ? 0
+                  : (currentPage - 1) * itemsPerPage + 1}{" "}
+                to {Math.min(currentPage * itemsPerPage, filteredItems.length)}{" "}
+                of {filteredItems.length} items
               </span>
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     disabled={currentPage === 1}
                     className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-400 disabled:opacity-40 cursor-pointer"
                   >
@@ -760,7 +914,9 @@ export default function StockItemsPage() {
                     </button>
                   ))}
                   <button
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
                     disabled={currentPage === totalPages}
                     className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-400 disabled:opacity-40 cursor-pointer"
                   >
@@ -824,7 +980,10 @@ export default function StockItemsPage() {
                         onChange={(e) => {
                           setFormName(e.target.value);
                           if (validationErrors.name) {
-                            setValidationErrors((prev) => ({ ...prev, name: false }));
+                            setValidationErrors((prev) => ({
+                              ...prev,
+                              name: false,
+                            }));
                           }
                         }}
                       />
@@ -842,7 +1001,10 @@ export default function StockItemsPage() {
                         onChange={(e) => {
                           setFormSku(e.target.value);
                           if (validationErrors.sku) {
-                            setValidationErrors((prev) => ({ ...prev, sku: false }));
+                            setValidationErrors((prev) => ({
+                              ...prev,
+                              sku: false,
+                            }));
                           }
                         }}
                       />
@@ -860,7 +1022,10 @@ export default function StockItemsPage() {
                         onChange={(e) => {
                           setFormCategoryId(e.target.value);
                           if (validationErrors.categoryId) {
-                            setValidationErrors((prev) => ({ ...prev, categoryId: false }));
+                            setValidationErrors((prev) => ({
+                              ...prev,
+                              categoryId: false,
+                            }));
                           }
                         }}
                       >
@@ -903,24 +1068,31 @@ export default function StockItemsPage() {
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => setShowLocationDropdown(!showLocationDropdown)}
+                        onClick={() =>
+                          setShowLocationDropdown(!showLocationDropdown)
+                        }
                         className={`w-full bg-white border ${
-                          validationErrors.locations ? "border-rose-400 focus:border-rose-500 ring-1 ring-rose-500/20" : "border-zinc-300 focus:border-[#16A34A]"
+                          validationErrors.locations
+                            ? "border-rose-400 focus:border-rose-500 ring-1 ring-rose-500/20"
+                            : "border-zinc-300 focus:border-[#16A34A]"
                         } rounded-xl py-2.5 px-3.5 text-xs font-semibold text-zinc-800 text-left flex justify-between items-center cursor-pointer`}
                       >
                         <span>
                           {selectedLocations.length === 0
                             ? "Select locations"
                             : selectedLocations.length === locations.length
-                            ? "All Locations Selected"
-                            : `${selectedLocations.length} Location${selectedLocations.length > 1 ? "s" : ""} Selected`}
+                              ? "All Locations Selected"
+                              : `${selectedLocations.length} Location${selectedLocations.length > 1 ? "s" : ""} Selected`}
                         </span>
                         <ChevronDown className="h-4 w-4 text-zinc-400" />
                       </button>
 
                       {showLocationDropdown && (
                         <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowLocationDropdown(false)} />
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowLocationDropdown(false)}
+                          />
                           <div className="absolute left-0 right-0 mt-1.5 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-60 overflow-y-auto p-2.5 z-50 space-y-2">
                             <div className="flex justify-between items-center pb-2 border-b border-zinc-100 text-[10px] font-extrabold uppercase text-[#64748B]">
                               <span>Select Locations</span>
@@ -928,9 +1100,14 @@ export default function StockItemsPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setSelectedLocations(locations.map(l => l.id));
+                                    setSelectedLocations(
+                                      locations.map((l) => l.id),
+                                    );
                                     if (validationErrors.locations) {
-                                      setValidationErrors(prev => ({ ...prev, locations: false }));
+                                      setValidationErrors((prev) => ({
+                                        ...prev,
+                                        locations: false,
+                                      }));
                                     }
                                   }}
                                   className="text-[#16A34A] hover:underline cursor-pointer"
@@ -949,7 +1126,9 @@ export default function StockItemsPage() {
                             </div>
                             <div className="space-y-1.5 pt-1">
                               {locations.map((loc) => {
-                                const isChecked = selectedLocations.includes(loc.id);
+                                const isChecked = selectedLocations.includes(
+                                  loc.id,
+                                );
                                 return (
                                   <label
                                     key={loc.id}
@@ -961,11 +1140,21 @@ export default function StockItemsPage() {
                                       checked={isChecked}
                                       onChange={() => {
                                         if (isChecked) {
-                                          setSelectedLocations(selectedLocations.filter(id => id !== loc.id));
+                                          setSelectedLocations(
+                                            selectedLocations.filter(
+                                              (id) => id !== loc.id,
+                                            ),
+                                          );
                                         } else {
-                                          setSelectedLocations([...selectedLocations, loc.id]);
+                                          setSelectedLocations([
+                                            ...selectedLocations,
+                                            loc.id,
+                                          ]);
                                           if (validationErrors.locations) {
-                                            setValidationErrors(prev => ({ ...prev, locations: false }));
+                                            setValidationErrors((prev) => ({
+                                              ...prev,
+                                              locations: false,
+                                            }));
                                           }
                                         }
                                       }}
@@ -992,7 +1181,10 @@ export default function StockItemsPage() {
                         onChange={(e) => {
                           setFormBaseUnit(e.target.value as BaseUnit);
                           if (validationErrors.baseUnit) {
-                            setValidationErrors((prev) => ({ ...prev, baseUnit: false }));
+                            setValidationErrors((prev) => ({
+                              ...prev,
+                              baseUnit: false,
+                            }));
                           }
                         }}
                       >
@@ -1006,7 +1198,8 @@ export default function StockItemsPage() {
                       <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
                     </div>
                     <span className="text-[10px] font-bold text-[#64748B] block mt-1">
-                      This is the unit you purchase and receive in (e.g., Pack 24, Box 12).
+                      This is the unit you purchase and receive in (e.g., Pack
+                      24, Box 12).
                     </span>
                   </div>
 
@@ -1035,22 +1228,24 @@ export default function StockItemsPage() {
                     Stock Settings
                   </h4>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
-                        Cost per Base Unit
-                      </label>
-                      <div className="relative">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400 text-xs">$</span>
-                        <input
-                          type="number"
-                          step="any"
-                          placeholder="0.00"
-                          className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 pl-7 pr-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
-                          value={formCostPerBaseUnit}
-                          onChange={(e) => setFormCostPerBaseUnit(e.target.value)}
-                        />
-                      </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#0F172A] uppercase tracking-wider block">
+                      Cost per Base Unit
+                    </label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400 text-xs">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="0.00"
+                        className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 pl-7 pr-3 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                        value={formCostPerBaseUnit}
+                        onChange={(e) => setFormCostPerBaseUnit(e.target.value)}
+                      />
                     </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4 pt-2 border-t border-zinc-100">
@@ -1082,16 +1277,22 @@ export default function StockItemsPage() {
 
                   {countingOptions.length === 0 ? (
                     <p className="text-[10px] font-bold text-zinc-400 text-center py-2">
-                      No counting options configured. Click Add Option to configure conversion factors.
+                      No counting options configured. Click Add Option to
+                      configure conversion factors.
                     </p>
                   ) : (
                     <div className="space-y-3.5">
                       {countingOptions.map((co, idx) => (
-                        <div key={idx} className="bg-zinc-50/50 border border-zinc-200 rounded-xl p-3.5 space-y-3 relative">
+                        <div
+                          key={idx}
+                          className="bg-zinc-50/50 border border-zinc-200 rounded-xl p-3.5 space-y-3 relative"
+                        >
                           <button
                             type="button"
                             onClick={() =>
-                              setCountingOptions((prev) => prev.filter((_, i) => i !== idx))
+                              setCountingOptions((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              )
                             }
                             className="absolute top-2.5 right-2.5 p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 cursor-pointer transition-colors"
                           >
@@ -1113,9 +1314,12 @@ export default function StockItemsPage() {
                                   setCountingOptions((prev) =>
                                     prev.map((item, i) =>
                                       i === idx
-                                        ? { ...item, displayName: e.target.value }
-                                        : item
-                                    )
+                                        ? {
+                                            ...item,
+                                            displayName: e.target.value,
+                                          }
+                                        : item,
+                                    ),
                                   )
                                 }
                               />
@@ -1137,9 +1341,13 @@ export default function StockItemsPage() {
                                   setCountingOptions((prev) =>
                                     prev.map((item, i) =>
                                       i === idx
-                                        ? { ...item, conversionToBaseQty: parseFloat(e.target.value) || 0 }
-                                        : item
-                                    )
+                                        ? {
+                                            ...item,
+                                            conversionToBaseQty:
+                                              parseFloat(e.target.value) || 0,
+                                          }
+                                        : item,
+                                    ),
                                   )
                                 }
                               />
@@ -1157,9 +1365,12 @@ export default function StockItemsPage() {
                                   setCountingOptions((prev) =>
                                     prev.map((item, i) =>
                                       i === idx
-                                        ? { ...item, showOnMobile: e.target.checked }
-                                        : item
-                                    )
+                                        ? {
+                                            ...item,
+                                            showOnMobile: e.target.checked,
+                                          }
+                                        : item,
+                                    ),
                                   )
                                 }
                               />
@@ -1184,9 +1395,13 @@ export default function StockItemsPage() {
                                   setCountingOptions((prev) =>
                                     prev.map((item, i) =>
                                       i === idx
-                                        ? { ...item, sortOrder: parseInt(e.target.value) || 0 }
-                                        : item
-                                    )
+                                        ? {
+                                            ...item,
+                                            sortOrder:
+                                              parseInt(e.target.value) || 0,
+                                          }
+                                        : item,
+                                    ),
                                   )
                                 }
                               />
@@ -1204,7 +1419,8 @@ export default function StockItemsPage() {
                       Storage Capacity & Reorder Level by Location
                     </h4>
                     <span className="text-[10px] font-semibold text-[#64748B] block">
-                      Set storage capacity and reorder level for this item at each location.
+                      Set storage capacity and reorder level for this item at
+                      each location.
                     </span>
                   </div>
 
@@ -1233,10 +1449,13 @@ export default function StockItemsPage() {
                           checked={reorderOption === "same"}
                           onChange={() => setReorderOption("same")}
                         />
-                        <span className="text-[10px] font-extrabold text-[#0F172A]">Apply Same Values</span>
+                        <span className="text-[10px] font-extrabold text-[#0F172A]">
+                          Apply Same Values
+                        </span>
                       </div>
                       <span className="text-[9px] font-bold text-zinc-500 mt-2 leading-relaxed">
-                        Use the same capacity & reorder level for every location.
+                        Use the same capacity & reorder level for every
+                        location.
                       </span>
                     </button>
 
@@ -1257,7 +1476,9 @@ export default function StockItemsPage() {
                           checked={reorderOption === "different"}
                           onChange={() => setReorderOption("different")}
                         />
-                        <span className="text-[10px] font-extrabold text-[#0F172A]">Set Different Values</span>
+                        <span className="text-[10px] font-extrabold text-[#0F172A]">
+                          Set Different Values
+                        </span>
                       </div>
                       <span className="text-[9px] font-bold text-zinc-500 mt-2 leading-relaxed">
                         Set custom capacity & reorder for each location.
@@ -1270,26 +1491,39 @@ export default function StockItemsPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-[#0F172A] uppercase block">
-                            Storage Capacity <span className="text-rose-500">*</span>
+                            Storage Capacity{" "}
+                            <span className="text-rose-500">*</span>
                           </label>
                           <div className="flex gap-1.5">
                             <input
                               type="number"
                               placeholder="0"
-                              className={getInputClassName("sameCapacity", "font-semibold")}
+                              className={getInputClassName(
+                                "sameCapacity",
+                                "font-semibold",
+                              )}
                               value={sameCapacity}
                               onChange={(e) => {
                                 setSameCapacity(e.target.value);
                                 if (validationErrors.sameCapacity) {
-                                  setValidationErrors((prev) => ({ ...prev, sameCapacity: false }));
+                                  setValidationErrors((prev) => ({
+                                    ...prev,
+                                    sameCapacity: false,
+                                  }));
                                 }
                               }}
                             />
                             <div className="relative shrink-0 w-24">
                               <select
                                 className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 pl-2 pr-7 text-[10px] font-bold text-zinc-700 focus:outline-none appearance-none cursor-pointer"
-                                value={dynamicUnits.includes(sameCapacityUnit) ? sameCapacityUnit : dynamicUnits[0]}
-                                onChange={(e) => setSameCapacityUnit(e.target.value)}
+                                value={
+                                  dynamicUnits.includes(sameCapacityUnit)
+                                    ? sameCapacityUnit
+                                    : dynamicUnits[0]
+                                }
+                                onChange={(e) =>
+                                  setSameCapacityUnit(e.target.value)
+                                }
                               >
                                 {dynamicUnits.map((unit) => (
                                   <option key={unit} value={unit}>
@@ -1304,26 +1538,39 @@ export default function StockItemsPage() {
 
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-[#0F172A] uppercase block">
-                            Reorder Level <span className="text-rose-500">*</span>
+                            Reorder Level{" "}
+                            <span className="text-rose-500">*</span>
                           </label>
                           <div className="flex gap-1.5">
                             <input
                               type="number"
                               placeholder="0"
-                              className={getInputClassName("sameReorder", "font-semibold")}
+                              className={getInputClassName(
+                                "sameReorder",
+                                "font-semibold",
+                              )}
                               value={sameReorder}
                               onChange={(e) => {
                                 setSameReorder(e.target.value);
                                 if (validationErrors.sameReorder) {
-                                  setValidationErrors((prev) => ({ ...prev, sameReorder: false }));
+                                  setValidationErrors((prev) => ({
+                                    ...prev,
+                                    sameReorder: false,
+                                  }));
                                 }
                               }}
                             />
                             <div className="relative shrink-0 w-24">
                               <select
                                 className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 pl-2 pr-7 text-[10px] font-bold text-zinc-700 focus:outline-none appearance-none cursor-pointer"
-                                value={dynamicUnits.includes(sameReorderUnit) ? sameReorderUnit : dynamicUnits[0]}
-                                onChange={(e) => setSameReorderUnit(e.target.value)}
+                                value={
+                                  dynamicUnits.includes(sameReorderUnit)
+                                    ? sameReorderUnit
+                                    : dynamicUnits[0]
+                                }
+                                onChange={(e) =>
+                                  setSameReorderUnit(e.target.value)
+                                }
                               >
                                 {dynamicUnits.map((unit) => (
                                   <option key={unit} value={unit}>
@@ -1340,17 +1587,24 @@ export default function StockItemsPage() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-[#0F172A] uppercase block">
-                            Current Stock ({formBaseUnit}) <span className="text-rose-500">*</span>
+                            Current Stock ({formBaseUnit}){" "}
+                            <span className="text-rose-500">*</span>
                           </label>
                           <input
                             type="number"
                             placeholder="0"
-                            className={getInputClassName("sameCurrentStock", "font-semibold")}
+                            className={getInputClassName(
+                              "sameCurrentStock",
+                              "font-semibold",
+                            )}
                             value={sameCurrentStock}
                             onChange={(e) => {
                               setSameCurrentStock(e.target.value);
                               if (validationErrors.sameCurrentStock) {
-                                setValidationErrors((prev) => ({ ...prev, sameCurrentStock: false }));
+                                setValidationErrors((prev) => ({
+                                  ...prev,
+                                  sameCurrentStock: false,
+                                }));
                               }
                             }}
                           />
@@ -1360,7 +1614,9 @@ export default function StockItemsPage() {
                   ) : selectedLocations.length === 0 ? (
                     <div className="bg-zinc-50 border border-zinc-200 border-dashed rounded-xl p-6 text-center">
                       <p className="text-xs font-semibold text-zinc-400">
-                        Please select at least one location in the "Locations" field above to configure specific rules.
+                        Please select at least one location in the
+                        &quot;Locations&quot; field above to configure specific
+                        rules.
                       </p>
                     </div>
                   ) : (
@@ -1368,147 +1624,192 @@ export default function StockItemsPage() {
                       <div className="max-h-72 overflow-y-auto divide-y divide-zinc-200">
                         <div className="grid grid-cols-12 text-[9px] uppercase font-extrabold text-[#64748B] bg-zinc-100/60 p-2 border-b border-zinc-200">
                           <span className="col-span-3">Location</span>
-                          <span className="col-span-2 pl-1.5">Current Stock <span className="text-rose-500">*</span></span>
-                          <span className="col-span-4 pl-1.5">Storage Capacity <span className="text-rose-500">*</span></span>
-                          <span className="col-span-3 pl-1.5">Reorder Level <span className="text-rose-500">*</span></span>
+                          <span className="col-span-2 pl-1.5">
+                            Current Stock{" "}
+                            <span className="text-rose-500">*</span>
+                          </span>
+                          <span className="col-span-4 pl-1.5">
+                            Storage Capacity{" "}
+                            <span className="text-rose-500">*</span>
+                          </span>
+                          <span className="col-span-3 pl-1.5">
+                            Reorder Level{" "}
+                            <span className="text-rose-500">*</span>
+                          </span>
                         </div>
-                        {locations.filter(loc => selectedLocations.includes(loc.id)).map((loc) => {
-                          const rule = locationRulesMap[loc.id] || {
-                            storageCapacity: "",
-                            storageCapacityUnit: dynamicUnits[0],
-                            reorderLevel: "",
-                            reorderLevelUnit: dynamicUnits[0],
-                            currentStock: "",
-                          };
-                          const stockErrKey = `stock_${loc.id}`;
-                          const capErrKey = `capacity_${loc.id}`;
-                          const reoErrKey = `reorder_${loc.id}`;
-                          return (
-                            <div key={loc.id} className="grid grid-cols-12 items-center gap-1.5 p-2 bg-white">
-                              <span className="col-span-3 text-[10px] font-extrabold text-[#0F172A] truncate animate-none" title={loc.name}>
-                                {loc.name}
-                              </span>
-                              
-                              <div className="col-span-2 flex gap-1 items-center pr-1.5">
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  className={`w-full bg-white border ${
-                                    validationErrors[stockErrKey] ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20" : "border-zinc-200 focus:border-[#16A34A]"
-                                  } rounded-lg py-1 px-1.5 text-[10px] text-zinc-950 focus:outline-none text-center font-bold`}
-                                  value={rule.currentStock}
-                                  onChange={(e) => {
-                                    setLocationRulesMap((prev) => ({
-                                      ...prev,
-                                      [loc.id]: {
-                                        ...rule,
-                                        currentStock: e.target.value,
-                                      },
-                                    }));
-                                    if (validationErrors[stockErrKey]) {
-                                      setValidationErrors((prev) => ({ ...prev, [stockErrKey]: false }));
-                                    }
-                                  }}
-                                />
-                              </div>
+                        {locations
+                          .filter((loc) => selectedLocations.includes(loc.id))
+                          .map((loc) => {
+                            const rule = locationRulesMap[loc.id] || {
+                              storageCapacity: "",
+                              storageCapacityUnit: dynamicUnits[0],
+                              reorderLevel: "",
+                              reorderLevelUnit: dynamicUnits[0],
+                              currentStock: "",
+                            };
+                            const stockErrKey = `stock_${loc.id}`;
+                            const capErrKey = `capacity_${loc.id}`;
+                            const reoErrKey = `reorder_${loc.id}`;
+                            return (
+                              <div
+                                key={loc.id}
+                                className="grid grid-cols-12 items-center gap-1.5 p-2 bg-white"
+                              >
+                                <span
+                                  className="col-span-3 text-[10px] font-extrabold text-[#0F172A] truncate animate-none"
+                                  title={loc.name}
+                                >
+                                  {loc.name}
+                                </span>
 
-                              <div className="col-span-4 flex gap-1 items-center">
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  className={`w-12 shrink-0 bg-white border ${
-                                    validationErrors[capErrKey] ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20" : "border-zinc-200 focus:border-[#16A34A]"
-                                  } rounded-lg py-1 px-1.5 text-[10px] text-zinc-950 focus:outline-none text-center font-bold`}
-                                  value={rule.storageCapacity}
-                                  onChange={(e) => {
-                                    setLocationRulesMap((prev) => ({
-                                      ...prev,
-                                      [loc.id]: {
-                                        ...rule,
-                                        storageCapacity: e.target.value,
-                                      },
-                                    }));
-                                    if (validationErrors[capErrKey]) {
-                                      setValidationErrors((prev) => ({ ...prev, [capErrKey]: false }));
-                                    }
-                                  }}
-                                />
-                                <div className="relative shrink-0 w-14">
-                                  <select
-                                    className="w-full bg-white border border-zinc-200 rounded-lg py-1 pl-1 pr-4 text-[8px] font-bold text-zinc-700 focus:outline-none appearance-none cursor-pointer"
-                                    value={dynamicUnits.includes(rule.storageCapacityUnit) ? rule.storageCapacityUnit : dynamicUnits[0]}
-                                    onChange={(e) =>
+                                <div className="col-span-2 flex gap-1 items-center pr-1.5">
+                                  <input
+                                    type="number"
+                                    placeholder="0"
+                                    className={`w-full bg-white border ${
+                                      validationErrors[stockErrKey]
+                                        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20"
+                                        : "border-zinc-200 focus:border-[#16A34A]"
+                                    } rounded-lg py-1 px-1.5 text-[10px] text-zinc-950 focus:outline-none text-center font-bold`}
+                                    value={rule.currentStock}
+                                    onChange={(e) => {
                                       setLocationRulesMap((prev) => ({
                                         ...prev,
                                         [loc.id]: {
                                           ...rule,
-                                          storageCapacityUnit: e.target.value,
+                                          currentStock: e.target.value,
                                         },
-                                      }))
-                                    }
-                                  >
-                                    {dynamicUnits.map((unit) => (
-                                      <option key={unit} value={unit}>
-                                        {unit}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-zinc-400 pointer-events-none" />
+                                      }));
+                                      if (validationErrors[stockErrKey]) {
+                                        setValidationErrors((prev) => ({
+                                          ...prev,
+                                          [stockErrKey]: false,
+                                        }));
+                                      }
+                                    }}
+                                  />
                                 </div>
-                              </div>
 
-                              <div className="col-span-3 flex gap-1 items-center">
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  className={`w-11 shrink-0 bg-white border ${
-                                    validationErrors[reoErrKey] ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20" : "border-zinc-200 focus:border-[#16A34A]"
-                                  } rounded-lg py-1 px-1.5 text-[10px] text-zinc-950 focus:outline-none text-center font-bold`}
-                                  value={rule.reorderLevel}
-                                  onChange={(e) => {
-                                    setLocationRulesMap((prev) => ({
-                                      ...prev,
-                                      [loc.id]: {
-                                        ...rule,
-                                        reorderLevel: e.target.value,
-                                      },
-                                    }));
-                                    if (validationErrors[reoErrKey]) {
-                                      setValidationErrors((prev) => ({ ...prev, [reoErrKey]: false }));
-                                    }
-                                  }}
-                                />
-                                <div className="relative shrink-0 w-12">
-                                  <select
-                                    className="w-full bg-white border border-zinc-200 rounded-lg py-1 pl-1 pr-4 text-[8px] font-bold text-zinc-700 focus:outline-none appearance-none cursor-pointer"
-                                    value={dynamicUnits.includes(rule.reorderLevelUnit) ? rule.reorderLevelUnit : dynamicUnits[0]}
-                                    onChange={(e) =>
+                                <div className="col-span-4 flex gap-1 items-center">
+                                  <input
+                                    type="number"
+                                    placeholder="0"
+                                    className={`w-12 shrink-0 bg-white border ${
+                                      validationErrors[capErrKey]
+                                        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20"
+                                        : "border-zinc-200 focus:border-[#16A34A]"
+                                    } rounded-lg py-1 px-1.5 text-[10px] text-zinc-950 focus:outline-none text-center font-bold`}
+                                    value={rule.storageCapacity}
+                                    onChange={(e) => {
                                       setLocationRulesMap((prev) => ({
                                         ...prev,
                                         [loc.id]: {
                                           ...rule,
-                                          reorderLevelUnit: e.target.value,
+                                          storageCapacity: e.target.value,
                                         },
-                                      }))
-                                    }
-                                  >
-                                    {dynamicUnits.map((unit) => (
-                                      <option key={unit} value={unit}>
-                                        {unit}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-zinc-400 pointer-events-none" />
+                                      }));
+                                      if (validationErrors[capErrKey]) {
+                                        setValidationErrors((prev) => ({
+                                          ...prev,
+                                          [capErrKey]: false,
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <div className="relative shrink-0 w-14">
+                                    <select
+                                      className="w-full bg-white border border-zinc-200 rounded-lg py-1 pl-1 pr-4 text-[8px] font-bold text-zinc-700 focus:outline-none appearance-none cursor-pointer"
+                                      value={
+                                        dynamicUnits.includes(
+                                          rule.storageCapacityUnit,
+                                        )
+                                          ? rule.storageCapacityUnit
+                                          : dynamicUnits[0]
+                                      }
+                                      onChange={(e) =>
+                                        setLocationRulesMap((prev) => ({
+                                          ...prev,
+                                          [loc.id]: {
+                                            ...rule,
+                                            storageCapacityUnit: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                    >
+                                      {dynamicUnits.map((unit) => (
+                                        <option key={unit} value={unit}>
+                                          {unit}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-zinc-400 pointer-events-none" />
+                                  </div>
+                                </div>
+
+                                <div className="col-span-3 flex gap-1 items-center">
+                                  <input
+                                    type="number"
+                                    placeholder="0"
+                                    className={`w-11 shrink-0 bg-white border ${
+                                      validationErrors[reoErrKey]
+                                        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500 ring-1 ring-rose-500/20"
+                                        : "border-zinc-200 focus:border-[#16A34A]"
+                                    } rounded-lg py-1 px-1.5 text-[10px] text-zinc-950 focus:outline-none text-center font-bold`}
+                                    value={rule.reorderLevel}
+                                    onChange={(e) => {
+                                      setLocationRulesMap((prev) => ({
+                                        ...prev,
+                                        [loc.id]: {
+                                          ...rule,
+                                          reorderLevel: e.target.value,
+                                        },
+                                      }));
+                                      if (validationErrors[reoErrKey]) {
+                                        setValidationErrors((prev) => ({
+                                          ...prev,
+                                          [reoErrKey]: false,
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <div className="relative shrink-0 w-12">
+                                    <select
+                                      className="w-full bg-white border border-zinc-200 rounded-lg py-1 pl-1 pr-4 text-[8px] font-bold text-zinc-700 focus:outline-none appearance-none cursor-pointer"
+                                      value={
+                                        dynamicUnits.includes(
+                                          rule.reorderLevelUnit,
+                                        )
+                                          ? rule.reorderLevelUnit
+                                          : dynamicUnits[0]
+                                      }
+                                      onChange={(e) =>
+                                        setLocationRulesMap((prev) => ({
+                                          ...prev,
+                                          [loc.id]: {
+                                            ...rule,
+                                            reorderLevelUnit: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                    >
+                                      {dynamicUnits.map((unit) => (
+                                        <option key={unit} value={unit}>
+                                          {unit}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-zinc-400 pointer-events-none" />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
                     </div>
                   )}
                   <span className="text-[9px] font-bold text-zinc-400 block">
-                    You can always edit these values later from the item details page.
+                    You can always edit these values later from the item details
+                    page.
                   </span>
                 </div>
 
@@ -1544,7 +1845,9 @@ export default function StockItemsPage() {
               <button
                 type="submit"
                 onClick={handleSave}
-                disabled={saving || !formName.trim() || !formCategoryId || !formBaseUnit}
+                disabled={
+                  saving || !formName.trim() || !formCategoryId || !formBaseUnit
+                }
                 className="bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
               >
                 {saving ? (
