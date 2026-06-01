@@ -5,7 +5,11 @@ import { useBusinessStore } from "@/store/business-store";
 import { getSuppliers } from "@/lib/repositories/supplier.repository";
 import { getLocations } from "@/lib/repositories/location.repository";
 import { getPurchaseOrders } from "@/lib/repositories/purchase-order.repository";
-import { getDeliveries, getDelivery, createDelivery } from "@/lib/repositories/delivery.repository";
+import {
+  getDeliveries,
+  getDelivery,
+  createDelivery,
+} from "@/lib/repositories/delivery.repository";
 import { Supplier, PurchaseOrder, Delivery, Location } from "@/types/inventory";
 import {
   PackageOpen,
@@ -20,7 +24,7 @@ import {
   Download,
   Filter,
   Check,
-  Building
+  Building,
 } from "lucide-react";
 
 export default function DeliveriesPage() {
@@ -96,7 +100,8 @@ export default function DeliveriesPage() {
 
   const activeSupplierPOs = purchaseOrders.filter((po) => {
     const belongsToSupplier = po.supplierId === selectedSupplierId;
-    const belongsToLocation = !selectedLocationId || po.locationId === selectedLocationId;
+    const belongsToLocation =
+      !selectedLocationId || po.locationId === selectedLocationId;
     const isSent = po.status === "sent";
     const notYetReceived = !deliveries.some((d) => d.purchaseOrderId === po.id);
     return belongsToSupplier && belongsToLocation && isSent && notYetReceived;
@@ -183,7 +188,7 @@ export default function DeliveriesPage() {
 
       alert("Delivery confirmed and inventory levels updated successfully!");
       setIsPanelOpen(false);
-      
+
       setSelectedSupplierId("");
       setSelectedLocationId("");
       setSelectedPOId("");
@@ -193,7 +198,9 @@ export default function DeliveriesPage() {
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.detail || "Failed to confirm and receive delivery.");
+      alert(
+        err.response?.data?.detail || "Failed to confirm and receive delivery.",
+      );
     } finally {
       setSaving(false);
     }
@@ -216,7 +223,8 @@ export default function DeliveriesPage() {
       d.supplierName.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesSupplier =
-      selectedSupplierFilter === "all" || d.supplierId === selectedSupplierFilter;
+      selectedSupplierFilter === "all" ||
+      d.supplierId === selectedSupplierFilter;
 
     const matchesStatus =
       selectedStatusFilter === "all" || d.status === selectedStatusFilter;
@@ -240,10 +248,13 @@ export default function DeliveriesPage() {
   });
 
   const totalDeliveriesCount = filteredDeliveries.length;
-  const totalPages = Math.max(1, Math.ceil(totalDeliveriesCount / itemsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalDeliveriesCount / itemsPerPage),
+  );
   const paginatedDeliveries = filteredDeliveries.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const selectedPO = purchaseOrders.find((p) => p.id === selectedPOId);
@@ -256,7 +267,7 @@ export default function DeliveriesPage() {
       const variance = totalReceived - totalOrdered;
       return { totalOrdered, totalReceived, totalValue, variance };
     },
-    { totalOrdered: 0, totalReceived: 0, totalValue: 0, variance: 0 }
+    { totalOrdered: 0, totalReceived: 0, totalValue: 0, variance: 0 },
   );
 
   const overallStats = deliveries.reduce(
@@ -265,7 +276,7 @@ export default function DeliveriesPage() {
       const totalVal = acc.totalVal + d.totalAmount;
       return { totalCount, totalVal };
     },
-    { totalCount: 0, totalVal: 0 }
+    { totalCount: 0, totalVal: 0 },
   );
 
   const pendingPOsCount = purchaseOrders.filter((po) => {
@@ -275,7 +286,10 @@ export default function DeliveriesPage() {
   }).length;
 
   const totalItemsReceivedCount = deliveries.reduce((acc, d) => {
-    return acc + (d.items || []).reduce((sum, item) => sum + item.receivedQuantity, 0);
+    return (
+      acc +
+      (d.items || []).reduce((sum, item) => sum + item.receivedQuantity, 0)
+    );
   }, 0);
 
   if (loading && deliveries.length === 0) {
@@ -292,7 +306,6 @@ export default function DeliveriesPage() {
   return (
     <div className="flex flex-col lg:flex-row gap-6 bg-white min-h-[85vh] relative">
       <div className="flex-1 min-w-0 space-y-6">
-        
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 pb-5">
           <div>
             <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
@@ -363,7 +376,11 @@ export default function DeliveriesPage() {
                 Total Value
               </p>
               <h3 className="text-xl font-extrabold text-[#0F172A] mt-0.5">
-                ${overallStats.totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                $
+                {overallStats.totalVal.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </h3>
               <p className="text-[9px] text-[#64748B] font-bold mt-0.5">
                 This Month
@@ -480,7 +497,7 @@ export default function DeliveriesPage() {
                   <th className="py-4 px-6">Supplier</th>
                   <th className="py-4 px-6">Delivery Date</th>
                   <th className="py-4 px-6 text-center">Items</th>
-                  <th className="py-4 px-6 text-right">Total Value (USD)</th>
+                  <th className="py-4 px-6 text-right">Total Value (AUD)</th>
                   <th className="py-4 px-6 text-center">Status</th>
                   <th className="py-4 px-6 text-center">Actions</th>
                 </tr>
@@ -493,9 +510,13 @@ export default function DeliveriesPage() {
                         <div className="h-12 w-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center mb-3 shadow-xs">
                           <PackageOpen className="h-6 w-6 text-zinc-400 stroke-[1.5]" />
                         </div>
-                        <h3 className="text-sm font-extrabold text-[#0F172A]">No delivery records</h3>
+                        <h3 className="text-sm font-extrabold text-[#0F172A]">
+                          No delivery records
+                        </h3>
                         <p className="text-zinc-500 text-xs mt-1 font-semibold leading-relaxed">
-                          {searchQuery || selectedSupplierFilter !== "all" || selectedStatusFilter !== "all"
+                          {searchQuery ||
+                          selectedSupplierFilter !== "all" ||
+                          selectedStatusFilter !== "all"
                             ? "No deliveries match your active filter settings."
                             : "There are no confirmed deliveries recorded yet for this business."}
                         </p>
@@ -508,17 +529,22 @@ export default function DeliveriesPage() {
                       d.status === "Received"
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                         : d.status === "Partially Received"
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-rose-50 text-rose-700 border-rose-200";
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-rose-50 text-rose-700 border-rose-200";
 
-                    const formattedDate = new Date(d.deliveryDate).toLocaleDateString("en-GB", {
+                    const formattedDate = new Date(
+                      d.deliveryDate,
+                    ).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "short",
                       year: "numeric",
                     });
 
                     return (
-                      <tr key={d.id} className="hover:bg-zinc-50/40 transition-colors">
+                      <tr
+                        key={d.id}
+                        className="hover:bg-zinc-50/40 transition-colors"
+                      >
                         <td className="py-4 px-6 font-extrabold text-[#0F172A]">
                           {d.deliveryNumber}
                         </td>
@@ -535,7 +561,11 @@ export default function DeliveriesPage() {
                           {d.itemsCount}
                         </td>
                         <td className="py-4 px-6 text-right font-extrabold text-[#0F172A]">
-                          ${d.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          $
+                          {d.totalAmount.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span
@@ -563,8 +593,13 @@ export default function DeliveriesPage() {
 
           <div className="bg-zinc-50/50 border-t border-zinc-200 px-6 py-4 flex items-center justify-between">
             <span className="text-[11px] font-bold text-zinc-500">
-              Showing {filteredDeliveries.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{" "}
-              {Math.min(currentPage * itemsPerPage, filteredDeliveries.length)} of {filteredDeliveries.length} deliveries
+              Showing{" "}
+              {filteredDeliveries.length > 0
+                ? (currentPage - 1) * itemsPerPage + 1
+                : 0}{" "}
+              to{" "}
+              {Math.min(currentPage * itemsPerPage, filteredDeliveries.length)}{" "}
+              of {filteredDeliveries.length} deliveries
             </span>
 
             <div className="flex items-center gap-1">
@@ -573,7 +608,10 @@ export default function DeliveriesPage() {
                 disabled={currentPage === 1}
                 className="p-1 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 disabled:opacity-40 disabled:hover:bg-white cursor-pointer"
               >
-                <X className="h-4 w-4 rotate-180 shrink-0" style={{ transform: "rotate(90deg)" }} />
+                <X
+                  className="h-4 w-4 rotate-180 shrink-0"
+                  style={{ transform: "rotate(90deg)" }}
+                />
               </button>
 
               {Array.from({ length: totalPages }).map((_, idx) => (
@@ -591,11 +629,16 @@ export default function DeliveriesPage() {
               ))}
 
               <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
                 className="p-1 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 disabled:opacity-40 disabled:hover:bg-white cursor-pointer"
               >
-                <X className="h-4 w-4 shrink-0" style={{ transform: "rotate(-90deg)" }} />
+                <X
+                  className="h-4 w-4 shrink-0"
+                  style={{ transform: "rotate(-90deg)" }}
+                />
               </button>
             </div>
           </div>
@@ -607,7 +650,9 @@ export default function DeliveriesPage() {
           <div className="bg-white border-b border-zinc-200 px-5 py-4 flex items-center justify-between">
             <div>
               <h2 className="text-base font-extrabold text-[#0F172A]">
-                {panelMode === "new" ? "Receive Delivery" : `View Delivery - ${viewingDelivery?.deliveryNumber || "..."}`}
+                {panelMode === "new"
+                  ? "Receive Delivery"
+                  : `View Delivery - ${viewingDelivery?.deliveryNumber || "..."}`}
               </h2>
               <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">
                 {panelMode === "new"
@@ -703,7 +748,8 @@ export default function DeliveriesPage() {
                             <option value="">Select a Purchase Order</option>
                             {activeSupplierPOs.map((p) => (
                               <option key={p.id} value={p.id}>
-                                {p.poNumber} {p.locationName ? `(${p.locationName})` : ""}
+                                {p.poNumber}{" "}
+                                {p.locationName ? `(${p.locationName})` : ""}
                               </option>
                             ))}
                           </select>
@@ -717,17 +763,23 @@ export default function DeliveriesPage() {
                         <div className="flex justify-between">
                           <span>PO Date:</span>
                           <span className="text-zinc-800">
-                            {new Date(selectedPO.createdAt).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            {new Date(selectedPO.createdAt).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Expected:</span>
                           <span className="text-zinc-800">
-                            {new Date(new Date(selectedPO.createdAt).getTime() + 86400000).toLocaleDateString("en-GB", {
+                            {new Date(
+                              new Date(selectedPO.createdAt).getTime() +
+                                86400000,
+                            ).toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "short",
                               year: "numeric",
@@ -737,7 +789,11 @@ export default function DeliveriesPage() {
                         <div className="flex justify-between border-t border-zinc-200/60 pt-1 mt-1 text-[11px]">
                           <span>PO Total:</span>
                           <span className="text-[#16A34A] font-extrabold">
-                            ${selectedPO.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            $
+                            {selectedPO.totalAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </span>
                         </div>
                       </div>
@@ -757,7 +813,11 @@ export default function DeliveriesPage() {
                         </h3>
                       </div>
                       <span className="text-[10px] font-extrabold text-zinc-400">
-                        {deliveryItemsInput.length} items • ${selectedPO?.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {deliveryItemsInput.length} items • $
+                        {selectedPO?.totalAmount.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </span>
                     </div>
 
@@ -768,19 +828,30 @@ export default function DeliveriesPage() {
                             <th className="py-2.5 px-3 w-8 text-center">#</th>
                             <th className="py-2.5 px-2">Item</th>
                             <th className="py-2.5 px-2 text-center">Ordered</th>
-                            <th className="py-2.5 px-2 text-center w-20">Received</th>
-                            <th className="py-2.5 px-2 text-right">Unit Price</th>
+                            <th className="py-2.5 px-2 text-center w-20">
+                              Received
+                            </th>
+                            <th className="py-2.5 px-2 text-right">
+                              Unit Price
+                            </th>
                             <th className="py-2.5 px-2 text-right">Total</th>
-                            <th className="py-2.5 px-3 text-center w-12">Recv (All)</th>
+                            <th className="py-2.5 px-3 text-center w-12">
+                              Recv (All)
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100 font-bold text-zinc-700 bg-white">
                           {deliveryItemsInput.map((item, idx) => {
-                            const totalVal = item.receivedQuantity * item.unitCost;
-                            const isAllReceived = item.receivedQuantity === item.orderedQuantity;
+                            const totalVal =
+                              item.receivedQuantity * item.unitCost;
+                            const isAllReceived =
+                              item.receivedQuantity === item.orderedQuantity;
 
                             return (
-                              <tr key={item.stockItemId} className="hover:bg-zinc-50/20">
+                              <tr
+                                key={item.stockItemId}
+                                className="hover:bg-zinc-50/20"
+                              >
                                 <td className="py-3 px-3 text-center text-zinc-400 font-bold">
                                   {idx + 1}
                                 </td>
@@ -805,9 +876,19 @@ export default function DeliveriesPage() {
                                         ? "border-zinc-200 focus:border-[#16A34A] focus:ring-[#16A34A]"
                                         : "border-[#16A34A] text-[#16A34A] focus:border-[#16A34A] focus:ring-[#16A34A]"
                                     }`}
-                                    value={item.receivedQuantity === 0 && item.orderedQuantity !== 0 ? "" : item.receivedQuantity}
+                                    value={
+                                      item.receivedQuantity === 0 &&
+                                      item.orderedQuantity !== 0
+                                        ? ""
+                                        : item.receivedQuantity
+                                    }
                                     placeholder="0"
-                                    onChange={(e) => handleReceivedQtyChange(idx, e.target.value)}
+                                    onChange={(e) =>
+                                      handleReceivedQtyChange(
+                                        idx,
+                                        e.target.value,
+                                      )
+                                    }
                                   />
                                 </td>
                                 <td className="py-3 px-2 text-right text-zinc-500 font-bold">
@@ -818,7 +899,12 @@ export default function DeliveriesPage() {
                                 </td>
                                 <td className="py-2 px-3 text-center">
                                   <button
-                                    onClick={() => handleToggleReceivedAll(idx, !isAllReceived)}
+                                    onClick={() =>
+                                      handleToggleReceivedAll(
+                                        idx,
+                                        !isAllReceived,
+                                      )
+                                    }
                                     className={`h-4.5 w-4.5 rounded flex items-center justify-center transition-all ${
                                       isAllReceived
                                         ? "bg-[#16A34A] text-white border border-[#16A34A]"
@@ -881,7 +967,7 @@ export default function DeliveriesPage() {
                           ${calculatedSummary.totalValue.toFixed(2)}
                         </h4>
                         <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">
-                          USD
+                          AUD
                         </p>
                       </div>
 
@@ -894,8 +980,8 @@ export default function DeliveriesPage() {
                             calculatedSummary.variance < 0
                               ? "text-rose-600"
                               : calculatedSummary.variance > 0
-                              ? "text-emerald-600"
-                              : "text-zinc-600"
+                                ? "text-emerald-600"
+                                : "text-zinc-600"
                           }`}
                         >
                           {calculatedSummary.variance > 0 ? "+" : ""}
@@ -910,7 +996,9 @@ export default function DeliveriesPage() {
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center text-[10px] font-extrabold uppercase tracking-wider text-zinc-500">
                         <span>Notes (Optional)</span>
-                        <span className="text-[9px] font-bold text-zinc-400">{notes.length}/250</span>
+                        <span className="text-[9px] font-bold text-zinc-400">
+                          {notes.length}/250
+                        </span>
                       </div>
                       <textarea
                         maxLength={250}
@@ -935,17 +1023,29 @@ export default function DeliveriesPage() {
 
                   <div className="grid grid-cols-2 gap-y-3 text-[11px] font-bold text-zinc-500">
                     <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Supplier</p>
-                      <p className="text-zinc-800 font-extrabold mt-0.5">{viewingDelivery.supplierName}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">PO Number</p>
-                      <p className="text-zinc-800 font-extrabold mt-0.5 uppercase">{viewingDelivery.poNumber}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Delivery Date</p>
+                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                        Supplier
+                      </p>
                       <p className="text-zinc-800 font-extrabold mt-0.5">
-                        {new Date(viewingDelivery.deliveryDate).toLocaleDateString("en-GB", {
+                        {viewingDelivery.supplierName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                        PO Number
+                      </p>
+                      <p className="text-zinc-800 font-extrabold mt-0.5 uppercase">
+                        {viewingDelivery.poNumber}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                        Delivery Date
+                      </p>
+                      <p className="text-zinc-800 font-extrabold mt-0.5">
+                        {new Date(
+                          viewingDelivery.deliveryDate,
+                        ).toLocaleDateString("en-GB", {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
@@ -955,14 +1055,16 @@ export default function DeliveriesPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Fulfillment Status</p>
+                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                        Fulfillment Status
+                      </p>
                       <span
                         className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-md border mt-1 ${
                           viewingDelivery.status === "Received"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : viewingDelivery.status === "Partially Received"
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-rose-50 text-rose-700 border-rose-200"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
                         }`}
                       >
                         {viewingDelivery.status}
@@ -995,7 +1097,8 @@ export default function DeliveriesPage() {
                       </thead>
                       <tbody className="divide-y divide-zinc-100 font-bold text-zinc-700 bg-white">
                         {viewingDelivery.items.map((item, idx) => {
-                          const isFullyReceived = item.receivedQuantity === item.orderedQuantity;
+                          const isFullyReceived =
+                            item.receivedQuantity === item.orderedQuantity;
 
                           return (
                             <tr key={item.id} className="hover:bg-zinc-50/10">
@@ -1015,7 +1118,9 @@ export default function DeliveriesPage() {
                               </td>
                               <td
                                 className={`py-3 px-2 text-center font-extrabold ${
-                                  isFullyReceived ? "text-zinc-700" : "text-[#16A34A]"
+                                  isFullyReceived
+                                    ? "text-zinc-700"
+                                    : "text-[#16A34A]"
                                 }`}
                               >
                                 {item.receivedQuantity}
@@ -1045,7 +1150,10 @@ export default function DeliveriesPage() {
                         Total Ordered
                       </p>
                       <h4 className="text-sm font-extrabold text-[#0F172A] mt-1">
-                        {viewingDelivery.items.reduce((sum, item) => sum + item.orderedQuantity, 0)}
+                        {viewingDelivery.items.reduce(
+                          (sum, item) => sum + item.orderedQuantity,
+                          0,
+                        )}
                       </h4>
                       <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">
                         Base Units
@@ -1057,7 +1165,10 @@ export default function DeliveriesPage() {
                         Total Received
                       </p>
                       <h4 className="text-sm font-extrabold text-[#0F172A] mt-1">
-                        {viewingDelivery.items.reduce((sum, item) => sum + item.receivedQuantity, 0)}
+                        {viewingDelivery.items.reduce(
+                          (sum, item) => sum + item.receivedQuantity,
+                          0,
+                        )}
                       </h4>
                       <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">
                         Base Units
@@ -1072,7 +1183,7 @@ export default function DeliveriesPage() {
                         ${viewingDelivery.totalAmount.toFixed(2)}
                       </h4>
                       <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">
-                        USD
+                        AUD
                       </p>
                     </div>
 
@@ -1081,8 +1192,14 @@ export default function DeliveriesPage() {
                         Variance
                       </p>
                       {(() => {
-                        const ordered = viewingDelivery.items.reduce((sum, item) => sum + item.orderedQuantity, 0);
-                        const received = viewingDelivery.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
+                        const ordered = viewingDelivery.items.reduce(
+                          (sum, item) => sum + item.orderedQuantity,
+                          0,
+                        );
+                        const received = viewingDelivery.items.reduce(
+                          (sum, item) => sum + item.receivedQuantity,
+                          0,
+                        );
                         const diff = received - ordered;
 
                         return (
@@ -1091,8 +1208,8 @@ export default function DeliveriesPage() {
                               diff < 0
                                 ? "text-rose-600"
                                 : diff > 0
-                                ? "text-emerald-600"
-                                : "text-zinc-600"
+                                  ? "text-emerald-600"
+                                  : "text-zinc-600"
                             }`}
                           >
                             {diff > 0 ? "+" : ""}
@@ -1108,9 +1225,11 @@ export default function DeliveriesPage() {
 
                   {viewingDelivery.notes && (
                     <div className="bg-zinc-50/50 border border-zinc-200 rounded-xl p-3.5 space-y-1">
-                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Delivery Notes</p>
+                      <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                        Delivery Notes
+                      </p>
                       <p className="text-xs font-bold text-zinc-700 leading-relaxed italic">
-                        "{viewingDelivery.notes}"
+                        &quot;{viewingDelivery.notes}&quot;
                       </p>
                     </div>
                   )}
@@ -1119,7 +1238,9 @@ export default function DeliveriesPage() {
             ) : (
               <div className="min-h-[30vh] flex flex-col items-center justify-center text-zinc-400">
                 <Loader2 className="h-6 w-6 animate-spin text-[#16A34A] mb-2" />
-                <p className="text-[10px] font-bold uppercase tracking-wider">Loading details...</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider">
+                  Loading details...
+                </p>
               </div>
             )}
           </div>
@@ -1135,7 +1256,9 @@ export default function DeliveriesPage() {
                 </button>
                 <button
                   onClick={handleConfirmAndReceive}
-                  disabled={saving || !selectedPOId || deliveryItemsInput.length === 0}
+                  disabled={
+                    saving || !selectedPOId || deliveryItemsInput.length === 0
+                  }
                   className="bg-[#16A34A] hover:bg-[#15803D] disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2 text-xs font-extrabold uppercase tracking-wider shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                 >
                   {saving ? (

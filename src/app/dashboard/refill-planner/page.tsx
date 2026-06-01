@@ -426,7 +426,7 @@ export default function RefillPlannerPage() {
                   maximumFractionDigits: 2,
                 })}
               </h3>
-              <p className="text-[10px] text-[#64748B] font-bold mt-0.5">USD</p>
+              <p className="text-[10px] text-[#64748B] font-bold mt-0.5">AUD</p>
             </div>
           </div>
         </div>

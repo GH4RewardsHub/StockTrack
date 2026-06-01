@@ -602,13 +602,13 @@ export default function SalesEntryPage() {
                       <th className="py-3 px-2 text-center w-24">Unit</th>
                       <th className="py-3 px-2 text-center w-24">Quantity</th>
                       <th className="py-3 px-2 text-right w-28">
-                        Unit Price (USD)
+                        Unit Price (AUD)
                       </th>
                       <th className="py-3 px-2 text-center w-24">
                         Discount (%)
                       </th>
                       <th className="py-3 px-2 text-right w-28">
-                        Amount (USD)
+                        Amount (AUD)
                       </th>
                       <th className="py-3 px-4 text-center w-12">Actions</th>
                     </tr>
@@ -974,7 +974,6 @@ export default function SalesEntryPage() {
               }}
             >
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-zinc-200">
-               
                 <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
