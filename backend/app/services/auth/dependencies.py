@@ -1,23 +1,26 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session
 
 from app.database import get_session
 from app.models import User
 from app.services.auth.utils import decode_access_token
 
+security = HTTPBearer(auto_error=False)
+
 
 def get_current_user(
-    authorization: Optional[str] = Header(None),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     session: Session = Depends(get_session)
 ) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
+    if not credentials or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid authorization header"
         )
 
-    token = authorization.split("Bearer ")[1]
+    token = credentials.credentials
     decoded = decode_access_token(token)
     if not decoded:
         raise HTTPException(

@@ -58,3 +58,15 @@ def get_businesses(
             items_count=len(b.stock_items)
         ))
     return out
+
+
+@router.get("/api/businesses/{business_id}", response_model=Business)
+def get_business(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    return business

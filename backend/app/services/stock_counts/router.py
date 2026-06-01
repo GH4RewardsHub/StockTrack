@@ -62,13 +62,33 @@ class StockCountSessionOut(SQLModel):
     items: List[StockCountItemOut] = []
 
 
-@router.post("/api/businesses/{business_id}/stock-counts", response_model=StockCountSessionOut)
+@router.post(
+    "/api/businesses/{business_id}/stock-counts",
+    response_model=StockCountSessionOut,
+    summary="Create a new stock count session",
+    description=(
+        "Initiates a new stock count session for a specific business. "
+        "It retrieves all active stock items for the business, determines their expected stock quantity "
+        "(globally or at a specific location), accepts initial count counts, and calculates variances."
+    ),
+    responses={
+        200: {"description": "Stock count session successfully created and initialized."},
+        400: {"description": "Invalid location ID specified."},
+        403: {"description": "User is not authorized to edit this business."},
+    }
+)
 def create_business_stock_count(
     business_id: str,
     data: StockCountSessionCreate,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+    """
+    **Create a Stock Count Session**
+
+    - **business_id**: The unique identifier of the business.
+    - **data**: Details of the stock count session including the target location, count date, counter's name, and initial items.
+    """
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
         raise HTTPException(
@@ -114,7 +134,8 @@ def create_business_stock_count(
         else:
             rules = session.exec(select(StockItemLocation).where(
                 StockItemLocation.stock_item_id == item.id)).all()
-            expected_qty = sum(r.current_stock for r in rules) if rules else 0.0
+            expected_qty = sum(
+                r.current_stock for r in rules) if rules else 0.0
 
         initial_cartons = None
         initial_pieces = None
@@ -195,12 +216,26 @@ def create_business_stock_count(
     )
 
 
-@router.get("/api/businesses/{business_id}/stock-counts", response_model=List[StockCountSessionOut])
+@router.get(
+    "/api/businesses/{business_id}/stock-counts",
+    response_model=List[StockCountSessionOut],
+    summary="List all stock count sessions",
+    description="Retrieves a list of all stock count sessions associated with the specified business.",
+    responses={
+        200: {"description": "A list of stock count sessions successfully retrieved."},
+        403: {"description": "User is not authorized to access this business."},
+    }
+)
 def get_business_stock_counts(
     business_id: str,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+    """
+    **List Stock Count Sessions**
+
+    - **business_id**: The unique identifier of the business.
+    """
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
         raise HTTPException(
@@ -258,13 +293,29 @@ def get_business_stock_counts(
     return out
 
 
-@router.get("/api/businesses/{business_id}/stock-counts/{session_id}", response_model=StockCountSessionOut)
+@router.get(
+    "/api/businesses/{business_id}/stock-counts/{session_id}",
+    response_model=StockCountSessionOut,
+    summary="Get stock count session details",
+    description="Retrieves granular information, itemized list, and calculated variances for a specific stock count session.",
+    responses={
+        200: {"description": "Detailed stock count session info successfully retrieved."},
+        403: {"description": "User is not authorized to access this business."},
+        404: {"description": "Stock count session not found."},
+    }
+)
 def get_business_stock_count_detail(
     business_id: str,
     session_id: str,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+    """
+    **Get Stock Count Details**
+
+    - **business_id**: The unique identifier of the business.
+    - **session_id**: The unique identifier of the stock count session.
+    """
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
         raise HTTPException(
@@ -321,7 +372,22 @@ def get_business_stock_count_detail(
     )
 
 
-@router.put("/api/businesses/{business_id}/stock-counts/{session_id}", response_model=StockCountSessionOut)
+@router.put(
+    "/api/businesses/{business_id}/stock-counts/{session_id}",
+    response_model=StockCountSessionOut,
+    summary="Update a stock count session",
+    description=(
+        "Updates an active stock count session's general info and individual stock count items. "
+        "When status is set to 'completed', this action automatically commits the finalized count "
+        "and updates the current stock levels in the business locations database."
+    ),
+    responses={
+        200: {"description": "Stock count session successfully updated."},
+        400: {"description": "Invalid location ID specified."},
+        403: {"description": "User is not authorized to edit this business."},
+        404: {"description": "Stock count session not found."},
+    }
+)
 def update_business_stock_count(
     business_id: str,
     session_id: str,
@@ -330,6 +396,14 @@ def update_business_stock_count(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+    """
+    **Update Stock Count Session**
+
+    - **business_id**: The unique identifier of the business.
+    - **session_id**: The unique identifier of the stock count session.
+    - **data**: Updated count quantities and notes.
+    - **status**: Optional new status (e.g. set to `completed` to lock the session and reconcile stock inventory).
+    """
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
         raise HTTPException(
@@ -462,13 +536,28 @@ def update_business_stock_count(
     )
 
 
-@router.delete("/api/businesses/{business_id}/stock-counts/{session_id}")
+@router.delete(
+    "/api/businesses/{business_id}/stock-counts/{session_id}",
+    summary="Delete a stock count session",
+    description="Deletes a specific stock count session from the records of the designated business.",
+    responses={
+        200: {"description": "Stock count session successfully deleted."},
+        403: {"description": "User is not authorized to edit this business."},
+        404: {"description": "Stock count session not found."},
+    }
+)
 def delete_business_stock_count(
     business_id: str,
     session_id: str,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
+    """
+    **Delete Stock Count Session**
+
+    - **business_id**: The unique identifier of the business.
+    - **session_id**: The unique identifier of the stock count session.
+    """
     business = session.get(Business, business_id)
     if not business or business.created_by_id != current_user.id:
         raise HTTPException(

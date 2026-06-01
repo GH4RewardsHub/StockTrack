@@ -106,3 +106,21 @@ def delete_business_location(
     session.delete(location)
     session.commit()
     return {"message": "Location deleted successfully"}
+
+
+@router.get("/api/businesses/{business_id}/locations/{location_id}", response_model=Location)
+def get_location(
+    business_id: str,
+    location_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    business = session.get(Business, business_id)
+    if not business or business.created_by_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this business")
+
+    location = session.get(Location, location_id)
+    if not location or location.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return location
