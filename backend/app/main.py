@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
+from app.middleware import RateLimitMiddleware
 
 from app.services.auth.router import router as auth_router
 from app.services.users.router import router as users_router
@@ -38,6 +39,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RateLimitMiddleware)
+
 
 
 @app.on_event("startup")
