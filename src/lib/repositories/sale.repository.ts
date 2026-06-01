@@ -1,5 +1,5 @@
 import api from "../services/api";
-import { Sale } from "@/types/inventory";
+import { Sale, SalesImport } from "@/types/inventory";
 
 const mapSale = (s: any): Sale => ({
   id: s.id,
@@ -102,3 +102,86 @@ export const updateSale = async (
   );
   return mapSale(response.data);
 };
+
+
+export const getSalesImports = async (
+  businessId: string,
+): Promise<SalesImport[]> => {
+  const response = await api.get(`/api/businesses/${businessId}/sales/imports`);
+  return response.data.map((imp: any) => ({
+    id: imp.id,
+    filename: imp.filename,
+    fileSize: imp.file_size,
+    rowCount: imp.row_count,
+    mappedCount: imp.mapped_count,
+    unmappedCount: imp.unmapped_count,
+    duplicatesCount: imp.duplicates_count,
+    status: imp.status,
+    dateRange: imp.date_range,
+    createdAt: imp.created_at,
+  }));
+};
+
+export const previewSalesImport = async (
+  businessId: string,
+  file: File,
+): Promise<{
+  filename: string;
+  fileSize: string;
+  headers: string[];
+  rows: string[][];
+  totalRows: number;
+  autoMapping: Record<string, string>;
+}> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await api.post(
+    `/api/businesses/${businessId}/sales/imports/preview`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+  return {
+    filename: response.data.filename,
+    fileSize: response.data.file_size,
+    headers: response.data.headers,
+    rows: response.data.rows,
+    totalRows: response.data.total_rows,
+    autoMapping: response.data.auto_mapping,
+  };
+};
+
+export const confirmSalesImport = async (
+  businessId: string,
+  payload: {
+    filename: string;
+    fileSize: string;
+    locationId?: string;
+    columnMapping: Record<string, string>;
+    headers: string[];
+    rows: string[][];
+  },
+): Promise<any> => {
+  const response = await api.post(`/api/businesses/${businessId}/sales/imports`, {
+    filename: payload.filename,
+    file_size: payload.fileSize,
+    location_id: payload.locationId || null,
+    column_mapping: {
+      date: payload.columnMapping.date || "",
+      time: payload.columnMapping.time || "",
+      item_name: payload.columnMapping.item_name || "",
+      category: payload.columnMapping.category || "",
+      quantity: payload.columnMapping.quantity || "",
+      unit_price: payload.columnMapping.unit_price || "",
+      discount: payload.columnMapping.discount || "",
+      net_sales: payload.columnMapping.net_sales || "",
+    },
+    headers: payload.headers,
+    rows: payload.rows,
+  });
+  return response.data;
+};
+

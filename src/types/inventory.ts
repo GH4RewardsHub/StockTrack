@@ -263,8 +263,22 @@ export interface Sale {
   createdAt: string;
   itemsCount?: number;
   items: SaleItem[];
-
 }
+
+
+export interface SalesImport {
+  id: string;
+  filename: string;
+  fileSize: string;
+  rowCount: number;
+  mappedCount: number;
+  unmappedCount: number;
+  duplicatesCount: number;
+  status: string;
+  dateRange: string;
+  createdAt: string;
+}
+
 
 
 
