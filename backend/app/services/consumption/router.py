@@ -229,13 +229,21 @@ def get_consumption_analysis(
             for _, s_rec in sale_items:
                 timestamps.append(s_rec.created_at)
             for _, s_sess in sc_results:
-                timestamps.append(s_sess.completed_at or s_sess.created_at)
+                try:
+                    count_dt = datetime.strptime(s_sess.count_date, "%Y-%m-%d")
+                    timestamps.append(datetime(count_dt.year, count_dt.month, count_dt.day, 23, 59, 59))
+                except Exception:
+                    timestamps.append(s_sess.completed_at or s_sess.created_at)
 
             t_start = min(timestamps) - timedelta(days=1) if timestamps else datetime.utcnow() - timedelta(days=365)
 
             events = [(t_start, 0.0)]
             for ci, s_sess in sc_results:
-                ts = s_sess.completed_at or s_sess.created_at
+                try:
+                    ts = datetime.strptime(s_sess.count_date, "%Y-%m-%d")
+                    ts = datetime(ts.year, ts.month, ts.day, 23, 59, 59)
+                except Exception:
+                    ts = s_sess.completed_at or s_sess.created_at
                 if ci.counted_qty is not None:
                     events.append((ts, ci.counted_qty))
 
@@ -257,7 +265,7 @@ def get_consumption_analysis(
                 t_next, q_next = cleaned_events[k+1]
 
                 del_in_int = sum(di.received_quantity for di, d_rec in del_results if t_curr < d_rec.delivery_date <= t_next)
-                c_total = q_curr + del_in_int - q_next
+                c_total = max(0.0, q_curr + del_in_int - q_next)
 
                 start_day = t_curr.date()
                 end_day = t_next.date()

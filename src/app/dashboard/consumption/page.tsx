@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
@@ -47,13 +48,21 @@ export default function ConsumptionPage() {
     "daily" | "weekly" | "monthly" | "custom"
   >("daily");
 
+  const getTodayString = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return "2025-04-10";
+    return getTodayString();
   });
 
   const [dateRangeOption, setDateRangeOption] = useState<string>("Custom");
-  const [startDate, setStartDate] = useState<string>("2025-04-10");
-  const [endDate, setEndDate] = useState<string>("2025-04-10");
+  const [startDate, setStartDate] = useState<string>(() => getTodayString());
+  const [endDate, setEndDate] = useState<string>(() => getTodayString());
 
   const [filterLocationId, setFilterLocationId] = useState<string>("all");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
@@ -163,9 +172,10 @@ export default function ConsumptionPage() {
     setFilterGroupBy("none");
     setFilterShow("top_consumed");
     setPeriod("daily");
-    setSelectedDate("2025-04-10");
-    setStartDate("2025-04-10");
-    setEndDate("2025-04-10");
+    const today = getTodayString();
+    setSelectedDate(today);
+    setStartDate(today);
+    setEndDate(today);
   };
 
   const handlePrevDay = () => {
@@ -251,9 +261,10 @@ export default function ConsumptionPage() {
   };
 
   const maxChartValue = useMemo(() => {
-    if (!analysisData || analysisData.timeline.length === 0) return 100;
+    if (!analysisData || analysisData.timeline.length === 0) return 10;
     const vals = analysisData.timeline.map((p) => p.consumed);
-    return Math.max(...vals, 100) * 1.15;
+    const maxVal = Math.max(...vals);
+    return maxVal > 0 ? maxVal * 1.15 : 10;
   }, [analysisData]);
 
   const svgChartPoints = useMemo(() => {
@@ -499,9 +510,27 @@ export default function ConsumptionPage() {
             ) : (
               <div className="w-full h-full flex">
                 <div className="w-12 h-[180px] flex flex-col justify-between text-[9px] font-bold text-zinc-400 text-right pr-2">
-                  <span>{(maxChartValue * 0.9).toFixed(0)}</span>
-                  <span>{(maxChartValue * 0.6).toFixed(0)}</span>
-                  <span>{(maxChartValue * 0.3).toFixed(0)}</span>
+                  <span>
+                    {maxChartValue >= 10
+                      ? (maxChartValue * 0.9).toFixed(0)
+                      : maxChartValue > 1
+                      ? (maxChartValue * 0.9).toFixed(1)
+                      : (maxChartValue * 0.9).toFixed(2)}
+                  </span>
+                  <span>
+                    {maxChartValue >= 10
+                      ? (maxChartValue * 0.6).toFixed(0)
+                      : maxChartValue > 1
+                      ? (maxChartValue * 0.6).toFixed(1)
+                      : (maxChartValue * 0.6).toFixed(2)}
+                  </span>
+                  <span>
+                    {maxChartValue >= 10
+                      ? (maxChartValue * 0.3).toFixed(0)
+                      : maxChartValue > 1
+                      ? (maxChartValue * 0.3).toFixed(1)
+                      : (maxChartValue * 0.3).toFixed(2)}
+                  </span>
                   <span>0</span>
                 </div>
 

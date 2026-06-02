@@ -477,18 +477,28 @@ def update_business_stock_count(
         session.commit()
         session.refresh(count_sess)
 
-        for ci in count_sess.items:
-            if ci.counted_qty is not None:
-                if count_sess.location_id:
-                    sil = session.exec(select(StockItemLocation).where(
-                        StockItemLocation.stock_item_id == ci.item_id,
-                        StockItemLocation.location_id == count_sess.location_id
-                    )).first()
-                    if sil:
-                        sil.current_stock = ci.counted_qty
-                        session.add(sil)
-                        session.commit()
-                        session.refresh(sil)
+        # Check if there is any other completed session with a later count_date
+        later_completed_session_query = select(StockCountSession).where(
+            StockCountSession.business_id == business_id,
+            StockCountSession.location_id == count_sess.location_id,
+            StockCountSession.status == StockCountStatus.completed,
+            StockCountSession.count_date > count_sess.count_date
+        )
+        later_completed = session.exec(later_completed_session_query).first()
+
+        if not later_completed:
+            for ci in count_sess.items:
+                if ci.counted_qty is not None:
+                    if count_sess.location_id:
+                        sil = session.exec(select(StockItemLocation).where(
+                            StockItemLocation.stock_item_id == ci.item_id,
+                            StockItemLocation.location_id == count_sess.location_id
+                        )).first()
+                        if sil:
+                            sil.current_stock = ci.counted_qty
+                            session.add(sil)
+                            session.commit()
+                            session.refresh(sil)
 
     location_name = None
     if count_sess.location_id:
