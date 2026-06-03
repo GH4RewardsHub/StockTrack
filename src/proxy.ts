@@ -10,7 +10,5 @@ export function proxy(
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/inventory/:path*",
-    "/reports/:path*",
   ],
 };

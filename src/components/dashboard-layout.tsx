@@ -60,6 +60,7 @@ export default function DashboardLayout({
   const [showHeaderLocationDropdown, setShowHeaderLocationDropdown] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [locationsLoaded, setLocationsLoaded] = useState(false);
 
   const businessDropdownRef = useRef<HTMLDivElement>(null);
   const locationDropdownRef = useRef<HTMLDivElement>(null);
@@ -104,7 +105,7 @@ export default function DashboardLayout({
       return;
     }
 
-    if (!activeBusinessId) {
+    if (!activeBusinessId || activeBusinessId === "null" || activeBusinessId === "undefined") {
       if (pathname !== "/dashboard/business") {
         router.push("/dashboard/business");
         return;
@@ -119,6 +120,13 @@ export default function DashboardLayout({
         const list = await getUserBusinesses([]);
         setBusinesses(list);
         const activeDoc = list.find((b) => b.id === activeBusinessId) || null;
+        if (!activeDoc) {
+          // Stale/invalid business ID in store/localStorage. Clear it and redirect.
+          setActiveBusiness("");
+          localStorage.removeItem("stocktrack_active_business_id");
+          router.push("/dashboard/business");
+          return;
+        }
         setActiveBusinessDoc(activeDoc);
       } catch (err) {
         console.error(err);
@@ -127,7 +135,7 @@ export default function DashboardLayout({
       }
     }
     loadBusinesses();
-  }, [user, profile, authLoading, activeBusinessId, setActiveBusiness, router]);
+  }, [user, profile, authLoading, activeBusinessId, setActiveBusiness, router, pathname]);
 
 
   useEffect(() => {
@@ -139,7 +147,10 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (activeBusinessId) {
-      fetchLocations(activeBusinessId);
+      setLocationsLoaded(false);
+      fetchLocations(activeBusinessId)
+        .then(() => setLocationsLoaded(true))
+        .catch(() => setLocationsLoaded(true));
     }
   }, [activeBusinessId, fetchLocations]);
 
@@ -160,6 +171,16 @@ export default function DashboardLayout({
       setActiveLocation(null);
     }
   }, [locations, activeLocationId, setActiveLocation]);
+
+  useEffect(() => {
+    if (authLoading || loading || !locationsLoaded) return;
+
+    if (activeBusinessId && !activeLocationId) {
+      if (pathname !== "/dashboard/locations" && pathname !== "/dashboard/business") {
+        router.push("/dashboard/locations");
+      }
+    }
+  }, [activeBusinessId, activeLocationId, pathname, authLoading, loading, locationsLoaded, router]);
 
   const handleBusinessChange = (id: string) => {
     setActiveBusiness(id);

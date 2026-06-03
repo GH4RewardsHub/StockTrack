@@ -308,6 +308,10 @@ export default function RecipesPage() {
     }
   };
 
+  if (!activeBusinessId) {
+    return null;
+  }
+
   if (recipesLoading || loadingContext) {
     return (
       <div className="h-[75vh] flex flex-col items-center justify-center bg-white text-[#0F172A]">
