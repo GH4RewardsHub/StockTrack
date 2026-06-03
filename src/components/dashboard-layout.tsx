@@ -621,10 +621,10 @@ export default function DashboardLayout({
               </div>
               <div className="hidden md:block text-left">
                 <p className="text-xs font-extrabold text-[#0F172A] leading-tight">
-                  {profile?.fullName || "Jeet Das"}
+                  {profile?.fullName || "User name"}
                 </p>
                 <p className="text-[10px] font-bold text-[#64748B]">
-                  {profile?.email || "jeet@gmail.com"}
+                  {profile?.email || "User email"}
                 </p>
               </div>
               <button

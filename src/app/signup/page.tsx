@@ -10,7 +10,7 @@ import { KeyRound, Mail, Eye, EyeOff, Loader2, User } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, fetchSession } = useAuth();
 
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -43,8 +43,8 @@ export default function SignupPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
       return;
     }
 
@@ -56,6 +56,7 @@ export default function SignupPage() {
     try {
       setLoading(true);
       await registerAdmin(email, password, fullName.trim());
+      await fetchSession();
       await refreshProfile();
       router.push("/dashboard/business");
     } catch (err: any) {
@@ -107,7 +108,7 @@ export default function SignupPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Jeet Das"
+                  placeholder="User name"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-4 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}

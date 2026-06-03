@@ -10,7 +10,7 @@ import { KeyRound, Mail, Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, fetchSession } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +29,7 @@ export default function LoginPage() {
       setLoading(true);
       setError(null);
       await loginAdmin(email, password);
+      await fetchSession();
       await refreshProfile();
       router.push("/dashboard/business");
     } catch (err: any) {

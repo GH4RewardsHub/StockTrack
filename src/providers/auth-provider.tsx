@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  fetchSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   refreshProfile: async () => {},
+  fetchSession: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -38,12 +40,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const res = await authClient.getSession();
       if (res?.data) {
         setSession(res.data);
+        if (res.data.session?.token) {
+          localStorage.setItem("stocktrack_token", res.data.session.token);
+        }
       } else {
         setSession(null);
+        localStorage.removeItem("stocktrack_token");
       }
     } catch (err) {
       console.error("Error fetching Better Auth session:", err);
       setSession(null);
+      localStorage.removeItem("stocktrack_token");
     } finally {
       setLoading(false);
     }
@@ -105,6 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loading,
         logout,
         refreshProfile,
+        fetchSession,
       }}
     >
       {children}
