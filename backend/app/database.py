@@ -19,7 +19,12 @@ if "sslmode" not in DATABASE_URL:
     else:
         DATABASE_URL += "?sslmode=require"
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 
 
 def init_db():

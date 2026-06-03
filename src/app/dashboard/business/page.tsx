@@ -264,7 +264,7 @@ export default function DashboardBusinessPage() {
               Create business profile
             </h3>
             <p className="text-[#64748B] text-xs mb-5 font-semibold leading-relaxed">
-              Register a new hospitality business venue to manage inventory and
+              Register a new business venue to manage inventory and
               reconciliation counts.
             </p>
 
