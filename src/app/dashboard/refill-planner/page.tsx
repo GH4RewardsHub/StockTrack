@@ -1,8 +1,9 @@
 "use client";
 
+import { useAuth } from "@/providers/auth-provider";
 import { useEffect, useState, useMemo } from "react";
 import { useBusinessStore } from "@/store/business-store";
-import { useAuth } from "@/providers/auth-provider";
+import { useLocationStore } from "@/store/location-store";
 import { getRefillSuggestions } from "@/lib/repositories/refill.repository";
 import { createPurchaseOrder } from "@/lib/repositories/purchase-order.repository";
 import { getSuppliers } from "@/lib/repositories/supplier.repository";
@@ -16,7 +17,6 @@ import {
 } from "@/types/inventory";
 import {
   ClipboardList,
-  Search,
   ChevronDown,
   X,
   Loader2,
@@ -28,11 +28,11 @@ import {
   ArrowRight,
   TrendingDown,
   Download,
-  Filter,
 } from "lucide-react";
 
 export default function RefillPlannerPage() {
   const { activeBusinessId } = useBusinessStore();
+  const { activeLocationId } = useLocationStore();
   const { profile } = useAuth();
 
   const [suggestions, setSuggestions] = useState<RefillSuggestion[]>([]);
@@ -45,7 +45,7 @@ export default function RefillPlannerPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState(activeLocationId || "all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [groupBy, setGroupBy] = useState<
     "supplier" | "category" | "location" | "none"
@@ -56,7 +56,6 @@ export default function RefillPlannerPage() {
   );
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
-  const [showFiltersSidebar, setShowFiltersSidebar] = useState(false);
   const [creatingPO, setCreatingPO] = useState(false);
   const [poResult, setPoResult] = useState<{ poNumbers: string[] } | null>(
     null,
@@ -110,6 +109,14 @@ export default function RefillPlannerPage() {
   useEffect(() => {
     loadData();
   }, [activeBusinessId, profile]);
+
+  useEffect(() => {
+    if (activeLocationId) {
+      setLocationFilter(activeLocationId);
+    } else {
+      setLocationFilter("all");
+    }
+  }, [activeLocationId]);
 
   const filteredSuggestions = useMemo(() => {
     return suggestions.filter((s) => {
@@ -464,29 +471,7 @@ export default function RefillPlannerPage() {
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
             </div>
-
-            <div className="relative min-w-[120px]">
-              <select
-                value={groupBy}
-                onChange={(e) => setGroupBy(e.target.value as any)}
-                className="w-full bg-white border border-zinc-200 rounded-xl py-2 px-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] focus:border-[#16A34A] cursor-pointer"
-              >
-                <option value="supplier">Supplier</option>
-                <option value="category">Category</option>
-                <option value="location">Location</option>
-                <option value="none">None</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-            </div>
           </div>
-
-          <button
-            onClick={() => setShowFiltersSidebar(true)}
-            className="flex items-center justify-center gap-2 bg-white border border-zinc-200 rounded-xl px-4 py-2 text-xs font-bold text-zinc-700 shadow-xs cursor-pointer hover:bg-zinc-50 transition-colors"
-          >
-            <Filter className="h-4 w-4 text-zinc-400" />
-            <span>Filters</span>
-          </button>
         </div>
 
         {groupedData.length === 0 ? (
@@ -702,222 +687,6 @@ export default function RefillPlannerPage() {
         )}
       </div>
 
-      {showFiltersSidebar && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/25 backdrop-blur-xs z-90"
-            onClick={() => setShowFiltersSidebar(false)}
-          />
-          <div className="fixed top-0 right-0 h-full w-[400px] bg-white border-l border-zinc-200 shadow-2xl flex flex-col justify-between z-100">
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              <div className="flex justify-between items-start border-b border-zinc-100 pb-4">
-                <div>
-                  <h3 className="text-base font-extrabold text-[#0F172A]">
-                    Filters
-                  </h3>
-                  <p className="text-[#64748B] text-[10px] font-bold mt-0.5">
-                    Customize your refill planner view.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowFiltersSidebar(false)}
-                  className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#0F172A] block">
-                    Supplier
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={supplierFilter}
-                      onChange={(e) => setSupplierFilter(e.target.value)}
-                      className="w-full bg-white border border-zinc-300 rounded-xl py-2 px-3 text-xs text-[#0F172A] font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer"
-                    >
-                      <option value="all">All Suppliers</option>
-                      {suppliers.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#0F172A] block">
-                    Location
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={locationFilter}
-                      onChange={(e) => setLocationFilter(e.target.value)}
-                      className="w-full bg-white border border-zinc-300 rounded-xl py-2 px-3 text-xs text-[#0F172A] font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer"
-                    >
-                      <option value="all">All Locations</option>
-                      {locations.map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#0F172A] block">
-                    Category
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="w-full bg-white border border-zinc-300 rounded-xl py-2 px-3 text-xs text-[#0F172A] font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer"
-                    >
-                      <option value="all">All Categories</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#0F172A] block">
-                    Stock Item Search
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400">
-                      <Search className="h-4 w-4" />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search stock items..."
-                      className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2 pl-9 pr-3.5 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold text-[#0F172A] block">
-                    Show Columns
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showColumns.currentStock}
-                        onChange={(e) =>
-                          setShowColumns((prev) => ({
-                            ...prev,
-                            currentStock: e.target.checked,
-                          }))
-                        }
-                        className="h-4 w-4 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded"
-                      />
-                      <span>Current Stock</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showColumns.capacity}
-                        onChange={(e) =>
-                          setShowColumns((prev) => ({
-                            ...prev,
-                            capacity: e.target.checked,
-                          }))
-                        }
-                        className="h-4 w-4 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded"
-                      />
-                      <span>Capacity</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showColumns.reorderLevel}
-                        onChange={(e) =>
-                          setShowColumns((prev) => ({
-                            ...prev,
-                            reorderLevel: e.target.checked,
-                          }))
-                        }
-                        className="h-4 w-4 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded"
-                      />
-                      <span>Reorder Level</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showColumns.toRefill}
-                        onChange={(e) =>
-                          setShowColumns((prev) => ({
-                            ...prev,
-                            toRefill: e.target.checked,
-                          }))
-                        }
-                        className="h-4 w-4 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded"
-                      />
-                      <span>To Refill</span>
-                    </label>
-                    <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showColumns.estCost}
-                        onChange={(e) =>
-                          setShowColumns((prev) => ({
-                            ...prev,
-                            estCost: e.target.checked,
-                          }))
-                        }
-                        className="h-4 w-4 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded"
-                      />
-                      <span>Est. Cost</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-zinc-100 bg-zinc-50 flex gap-3">
-              <button
-                onClick={() => {
-                  setSupplierFilter("all");
-                  setLocationFilter("all");
-                  setCategoryFilter("all");
-                  setSearchQuery("");
-                  setShowColumns({
-                    currentStock: true,
-                    capacity: true,
-                    reorderLevel: true,
-                    toRefill: true,
-                    estCost: true,
-                  });
-                }}
-                className="flex-1 bg-white border border-zinc-200 text-zinc-700 rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-zinc-100 transition-colors"
-              >
-                Clear All
-              </button>
-              <button
-                onClick={() => setShowFiltersSidebar(false)}
-                className="flex-1 bg-[#16A34A] text-white rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider hover:bg-[#15803D] transition-colors"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

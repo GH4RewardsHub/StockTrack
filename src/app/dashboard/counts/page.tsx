@@ -1,12 +1,14 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import Image from "next/image";
+import { Business } from "@/types/business";
 import { useEffect, useState } from "react";
-import { useBusinessStore } from "@/store/business-store";
 import { useAuth } from "@/providers/auth-provider";
+import { useBusinessStore } from "@/store/business-store";
 import { getLocations } from "@/lib/repositories/location.repository";
 import { getStockItems } from "@/lib/repositories/stock-item.repository";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
-import { Business } from "@/types/business";
 import {
   getStockCounts,
   getStockCountDetail,
@@ -31,11 +33,36 @@ import {
   Check,
 } from "lucide-react";
 
+const encodeNotes = (
+  userNotes: string,
+  selectedOptionId: string,
+  originalCartons: string,
+) => {
+  if (!selectedOptionId && !originalCartons) return userNotes;
+  return `[opt:${selectedOptionId || ""},qty:${originalCartons || ""}]${userNotes}`;
+};
+
+const decodeNotes = (dbNotes: string | undefined) => {
+  if (!dbNotes)
+    return { selectedOptionId: "", originalCartons: "", userNotes: "" };
+  const match = dbNotes.match(/^\[opt:([^,]*),qty:([^\]]*)\](.*)$/);
+  if (match) {
+    return {
+      selectedOptionId: match[1],
+      originalCartons: match[2],
+      userNotes: match[3],
+    };
+  }
+  return { selectedOptionId: "", originalCartons: "", userNotes: dbNotes };
+};
+
 export default function StockCountsPage() {
   const { activeBusinessId, setActiveBusiness } = useBusinessStore();
   const { profile } = useAuth();
 
-  const [viewMode, setViewMode] = useState<"count" | "history" | "detail">("count");
+  const [viewMode, setViewMode] = useState<"count" | "history" | "detail">(
+    "count",
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +70,15 @@ export default function StockCountsPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [historySessions, setHistorySessions] = useState<StockCountSession[]>([]);
-  const [selectedDetailSession, setSelectedDetailSession] = useState<StockCountSession | null>(null);
+  const [historySessions, setHistorySessions] = useState<StockCountSession[]>(
+    [],
+  );
+  const [selectedDetailSession, setSelectedDetailSession] =
+    useState<StockCountSession | null>(null);
 
-  const [activeSession, setActiveSession] = useState<StockCountSession | null>(null);
+  const [activeSession, setActiveSession] = useState<StockCountSession | null>(
+    null,
+  );
   const [selectedLocationId, setSelectedLocationId] = useState("");
   const [countType, setCountType] = useState("General Count");
   const [countDate, setCountDate] = useState("");
@@ -59,13 +91,13 @@ export default function StockCountsPage() {
       {
         countedCartons: string;
         countedPieces: string;
+        selectedOptionId: string;
         notes: string;
       }
     >
   >({});
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [displayUnit, setDisplayUnit] = useState("Cartons & Pieces");
   const [lastAutoSave, setLastAutoSave] = useState("");
   const [recentActivities, setRecentActivities] = useState<
     { user: string; text: string; time: string }[]
@@ -95,9 +127,14 @@ export default function StockCountsPage() {
         let timeStr = sess.countDate;
         try {
           if (sess.createdAt) {
-            timeStr = new Date(sess.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
+            timeStr = new Date(sess.createdAt).toLocaleDateString([], {
+              month: "short",
+              day: "numeric",
+            });
           }
-        } catch (e) {}
+        } catch (e) {
+          console.log(e);
+        }
         return {
           user: sess.countedByName || "User",
           text: isCompleted
@@ -129,8 +166,14 @@ export default function StockCountsPage() {
         getStockCounts(activeBusinessId),
       ]);
 
-      setLocations((locsList as Location[]).filter((l: Location) => l.isActive !== false));
-      setStockItems((itemsList as StockItem[]).filter((i: StockItem) => i.isActive !== false));
+      setLocations(
+        (locsList as Location[]).filter((l: Location) => l.isActive !== false),
+      );
+      setStockItems(
+        (itemsList as StockItem[]).filter(
+          (i: StockItem) => i.isActive !== false,
+        ),
+      );
       setHistorySessions(sessList);
 
       if (locsList.length > 0) {
@@ -148,20 +191,6 @@ export default function StockCountsPage() {
     loadInitialData();
   }, [activeBusinessId]);
 
-  const getConversionFactor = (item: StockItem) => {
-    if (item.countingOptions && item.countingOptions.length > 0) {
-      return item.countingOptions[0].conversionToBaseQty || 1;
-    }
-    return 1;
-  };
-
-  const getConversionName = (item: StockItem) => {
-    if (item.countingOptions && item.countingOptions.length > 0) {
-      return item.countingOptions[0].displayName || "Carton";
-    }
-    return "";
-  };
-
   const getExpectedQty = (item: StockItem) => {
     return item.currentStock !== undefined ? item.currentStock : 0;
   };
@@ -170,12 +199,15 @@ export default function StockCountsPage() {
     const counts = itemCounts[itemId];
     if (!counts) return 0;
 
-    const conversion = getConversionFactor(item);
     const cartons = parseFloat(counts.countedCartons) || 0;
     const pieces = parseFloat(counts.countedPieces) || 0;
 
     const hasOptions = item.countingOptions && item.countingOptions.length > 0;
     if (hasOptions) {
+      const selectedOpt = item.countingOptions?.find(
+        (o) => o.id === counts.selectedOptionId,
+      );
+      const conversion = selectedOpt ? selectedOpt.conversionToBaseQty || 1 : 1;
       return cartons * conversion + pieces;
     }
     return pieces;
@@ -184,12 +216,13 @@ export default function StockCountsPage() {
   const startNewSession = () => {
     setActiveSession(null);
     setNotes("");
-    
+
     const initialItemCounts: typeof itemCounts = {};
     stockItems.forEach((item) => {
       initialItemCounts[item.id] = {
         countedCartons: "",
         countedPieces: "",
+        selectedOptionId: item.countingOptions?.[0]?.id || "",
         notes: "",
       };
     });
@@ -208,10 +241,18 @@ export default function StockCountsPage() {
     const loadedCounts: typeof itemCounts = {};
     stockItems.forEach((item) => {
       const match = (sess.items || []).find((si) => si.itemId === item.id);
+      const decoded = decodeNotes(match?.notes);
       loadedCounts[item.id] = {
-        countedCartons: match?.countedCartons !== undefined ? String(match.countedCartons) : "",
-        countedPieces: match?.countedPieces !== undefined ? String(match.countedPieces) : "",
-        notes: match?.notes || "",
+        countedCartons: decoded.selectedOptionId
+          ? decoded.originalCartons
+          : match?.countedCartons !== undefined
+            ? String(match.countedCartons)
+            : "",
+        countedPieces:
+          match?.countedPieces !== undefined ? String(match.countedPieces) : "",
+        selectedOptionId:
+          decoded.selectedOptionId || item.countingOptions?.[0]?.id || "",
+        notes: decoded.userNotes,
       };
     });
     setItemCounts(loadedCounts);
@@ -225,6 +266,10 @@ export default function StockCountsPage() {
       cleared[item.id] = {
         countedCartons: "",
         countedPieces: "",
+        selectedOptionId:
+          itemCounts[item.id]?.selectedOptionId ||
+          item.countingOptions?.[0]?.id ||
+          "",
         notes: itemCounts[item.id]?.notes || "",
       };
     });
@@ -238,12 +283,47 @@ export default function StockCountsPage() {
       setError(null);
 
       const itemsPayload = stockItems.map((item) => {
-        const counts = itemCounts[item.id] || { countedCartons: "", countedPieces: "", notes: "" };
+        const counts = itemCounts[item.id] || {
+          countedCartons: "",
+          countedPieces: "",
+          selectedOptionId: "",
+          notes: "",
+        };
+
+        let cartonsVal: number | undefined = undefined;
+        let piecesVal: number | undefined = undefined;
+
+        if (counts.countedPieces !== "") {
+          piecesVal = parseFloat(counts.countedPieces);
+        }
+
+        if (counts.countedCartons !== "") {
+          const qty = parseFloat(counts.countedCartons);
+          const selectedOpt = item.countingOptions?.find(
+            (o) => o.id === counts.selectedOptionId,
+          );
+          const defaultOpt = item.countingOptions?.[0];
+          if (selectedOpt && defaultOpt) {
+            cartonsVal =
+              qty *
+              (selectedOpt.conversionToBaseQty /
+                defaultOpt.conversionToBaseQty);
+          } else {
+            cartonsVal = qty;
+          }
+        }
+
+        const encodedNotes = encodeNotes(
+          counts.notes,
+          counts.selectedOptionId,
+          counts.countedCartons,
+        );
+
         return {
           itemId: item.id,
-          countedCartons: counts.countedCartons !== "" ? parseFloat(counts.countedCartons) : undefined,
-          countedPieces: counts.countedPieces !== "" ? parseFloat(counts.countedPieces) : undefined,
-          notes: counts.notes,
+          countedCartons: cartonsVal,
+          countedPieces: piecesVal,
+          notes: encodedNotes,
           expectedQty: getExpectedQty(item),
         };
       });
@@ -264,7 +344,7 @@ export default function StockCountsPage() {
           activeBusinessId,
           activeSession.id,
           dataPayload,
-          complete ? "completed" : "in_progress"
+          complete ? "completed" : "in_progress",
         );
       } else {
         responseSession = await createStockCount(activeBusinessId, dataPayload);
@@ -273,16 +353,21 @@ export default function StockCountsPage() {
             activeBusinessId,
             responseSession.id,
             dataPayload,
-            "completed"
+            "completed",
           );
         }
       }
 
-      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timestamp = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
       setLastAutoSave(timestamp);
 
       if (complete) {
-        alert("Stock Count submitted successfully! Inventory stock levels updated.");
+        alert(
+          "Stock Count submitted successfully! Inventory stock levels updated.",
+        );
         const refreshedList = await getStockCounts(activeBusinessId);
         setHistorySessions(refreshedList);
         setViewMode("history");
@@ -321,7 +406,7 @@ export default function StockCountsPage() {
   const locationFilteredItems = stockItems.filter((item) => {
     if (!selectedLocationId) return true;
     return (item.locationRules || []).some(
-      (rule) => rule.locationId === selectedLocationId
+      (rule) => rule.locationId === selectedLocationId,
     );
   });
 
@@ -335,7 +420,9 @@ export default function StockCountsPage() {
   const totalItemsCount = locationFilteredItems.length;
   const countedItemsList = locationFilteredItems.filter((item) => {
     const counts = itemCounts[item.id];
-    return counts && (counts.countedCartons !== "" || counts.countedPieces !== "");
+    return (
+      counts && (counts.countedCartons !== "" || counts.countedPieces !== "")
+    );
   });
   const countedItemsCount = countedItemsList.length;
   const remainingItemsCount = totalItemsCount - countedItemsCount;
@@ -344,12 +431,16 @@ export default function StockCountsPage() {
     return acc + calculateTotalBaseQty(item.id, item);
   }, 0);
 
-  const completionPercent = totalItemsCount > 0 ? Math.round((countedItemsCount / totalItemsCount) * 100) : 0;
+  const completionPercent =
+    totalItemsCount > 0
+      ? Math.round((countedItemsCount / totalItemsCount) * 100)
+      : 0;
 
   return (
-    <div className={`flex flex-col xl:flex-row gap-6 bg-white min-h-[85vh] relative select-none ${viewMode === "count" ? "pb-24" : ""}`}>
+    <div
+      className={`flex flex-col xl:flex-row gap-6 bg-white min-h-[85vh] relative select-none ${viewMode === "count" ? "pb-24" : ""}`}
+    >
       <div className="flex-1 min-w-0 space-y-6 pr-0 xl:pr-6">
-        
         {viewMode === "count" && (
           <>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 pb-5">
@@ -485,23 +576,6 @@ export default function StockCountsPage() {
               </div>
 
               <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
-                    Display Unit:
-                  </span>
-                  <div className="relative">
-                    <select
-                      className="bg-white border border-zinc-200 rounded-xl py-2 pl-3.5 pr-8 text-xs font-bold text-zinc-700 focus:outline-none focus:border-[#16A34A] cursor-pointer appearance-none shadow-xs"
-                      value={displayUnit}
-                      onChange={(e) => setDisplayUnit(e.target.value)}
-                    >
-                      <option value="Cartons & Pieces">Cartons & Pieces</option>
-                      <option value="Base Units Only">Base Units Only</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400 pointer-events-none" />
-                  </div>
-                </div>
-
                 <button className="border border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-700 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
                   Filters
                 </button>
@@ -521,38 +595,43 @@ export default function StockCountsPage() {
                     <tr className="border-b border-zinc-200 text-[10px] uppercase font-extrabold tracking-wider text-[#64748B] bg-zinc-50/50">
                       <th className="py-4 px-6 w-12 text-center">#</th>
                       <th className="py-4 px-6">Item</th>
-                      <th className="py-4 px-6">SKU</th>
-                      <th className="py-4 px-6">Unit Info</th>
-                      <th className="py-4 px-6 text-center w-60" colSpan={2}>
+                      <th className="py-4 px-6 w-64">Unit Info</th>
+                      <th className="py-4 px-6 text-center w-80" colSpan={2}>
                         Counted Quantity
                       </th>
                       <th className="py-4 px-6">Total (Base Unit)</th>
-                      <th className="py-4 px-6">Notes</th>
+                      <th className="py-4 px-2 w-28">Notes</th>
                     </tr>
                     <tr className="border-b border-zinc-200 text-[9px] uppercase font-extrabold tracking-wider text-zinc-400 bg-zinc-50/20">
-                      <th colSpan={4} />
-                      <th className="py-2 px-1 text-center border-r border-zinc-100">Cartons / Packs</th>
-                      <th className="py-2 px-1 text-center">Pieces / Base</th>
+                      <th colSpan={3} />
+                      <th className="py-2 px-1 text-center border-r border-zinc-100 w-32">
+                        Base Qty
+                      </th>
+                      <th className="py-2 px-1 text-center w-48">
+                        Counting Option (If Any)
+                      </th>
                       <th colSpan={2} />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 text-xs text-[#0F172A]">
                     {filteredItems.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-16 px-6 text-center">
+                        <td colSpan={7} className="py-16 px-6 text-center">
                           <div className="flex flex-col items-center justify-center max-w-md mx-auto">
                             <div className="h-12 w-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center mb-3 shadow-xs">
                               <ClipboardList className="h-6 w-6 text-zinc-400 stroke-[1.5]" />
                             </div>
-                            <h3 className="text-sm font-extrabold text-[#0F172A]">No stock items found</h3>
+                            <h3 className="text-sm font-extrabold text-[#0F172A]">
+                              No stock items found
+                            </h3>
                             <p className="text-zinc-500 text-xs mt-1 font-semibold leading-relaxed">
-                              {searchQuery 
-                                ? `No items match "${searchQuery}" in this location.` 
+                              {searchQuery
+                                ? `No items match "${searchQuery}" in this location.`
                                 : "There are no stock items assigned to this location yet. Go to Stock Items to assign them."}
                             </p>
                             {!searchQuery && (
-                              <a 
-                                href="/dashboard/stock-items" 
+                              <a
+                                href="/dashboard/stock-items"
                                 className="mt-4 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs cursor-pointer inline-block"
                               >
                                 Manage Stock Items
@@ -561,131 +640,177 @@ export default function StockCountsPage() {
                           </div>
                         </td>
                       </tr>
-                    ) : filteredItems.map((item, index) => {
-                      const counts = itemCounts[item.id] || {
-                        countedCartons: "",
-                        countedPieces: "",
-                        notes: "",
-                      };
+                    ) : (
+                      filteredItems.map((item, index) => {
+                        const counts = itemCounts[item.id] || {
+                          countedCartons: "",
+                          countedPieces: "",
+                          selectedOptionId: item.countingOptions?.[0]?.id || "",
+                          notes: "",
+                        };
 
-                      const hasOptions = item.countingOptions && item.countingOptions.length > 0;
-                      const conversion = getConversionFactor(item);
-                      const conversionName = getConversionName(item);
+                        const hasOptions =
+                          item.countingOptions &&
+                          item.countingOptions.length > 0;
 
-                      const totalBaseQty = calculateTotalBaseQty(item.id, item);
-                      const isCounted = counts.countedCartons !== "" || counts.countedPieces !== "";
+                        const totalBaseQty = calculateTotalBaseQty(
+                          item.id,
+                          item,
+                        );
+                        const isCounted =
+                          counts.countedCartons !== "" ||
+                          counts.countedPieces !== "";
 
-                      return (
-                        <tr key={item.id} className="hover:bg-zinc-50/40 transition-colors">
-                          <td className="py-4 px-6 text-center text-zinc-400 font-bold">
-                            {index + 1}
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 border border-zinc-200 overflow-hidden shadow-xs">
-                                {item.imageUrl ? (
-                                  <img
-                                    src={item.imageUrl}
-                                    alt={item.name}
-                                    className="h-full w-full object-cover"
+                        return (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-zinc-50/40 transition-colors"
+                          >
+                            <td className="py-4 px-6 text-center text-zinc-400 font-bold">
+                              {index + 1}
+                            </td>
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 border border-zinc-200 overflow-hidden shadow-xs">
+                                  {item.imageUrl ? (
+                                    <Image
+                                      src={item.imageUrl}
+                                      alt={item.name}
+                                      width={100}
+                                      height={100}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <ClipboardList className="h-5 w-5 text-zinc-400" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-extrabold text-[#0F172A]">
+                                    {item.name}
+                                  </p>
+                                  <p className="text-[10px] text-[#64748B] font-bold mt-0.5 uppercase tracking-wider">
+                                    {item.categoryName || "Beverages"}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 font-bold text-zinc-500">
+                              {hasOptions ? (
+                                <div className="flex flex-col gap-0.5">
+                                  {item.countingOptions?.map((opt, idx) => (
+                                    <span key={opt.id || idx}>
+                                      1 {opt.displayName} ={" "}
+                                      {opt.conversionToBaseQty} {item.baseUnit}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span>
+                                  1 {item.baseUnit} = 1 {item.baseUnit}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-2 text-center border-r border-zinc-100 w-32">
+                              <div className="flex items-center justify-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  placeholder="0"
+                                  className="w-20 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-0 text-center text-xs font-bold focus:outline-none"
+                                  value={counts.countedPieces}
+                                  onChange={(e) =>
+                                    setItemCounts((prev) => ({
+                                      ...prev,
+                                      [item.id]: {
+                                        ...counts,
+                                        countedPieces: e.target.value,
+                                      },
+                                    }))
+                                  }
+                                />
+                                <span className="text-[10px] text-zinc-400 font-bold">
+                                  {item.baseUnit}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-2 text-center w-48">
+                              {hasOptions ? (
+                                <div className="flex items-center gap-1 justify-center">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="--"
+                                    className="w-16 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
+                                    value={counts.countedCartons}
+                                    onChange={(e) =>
+                                      setItemCounts((prev) => ({
+                                        ...prev,
+                                        [item.id]: {
+                                          ...counts,
+                                          countedCartons: e.target.value,
+                                        },
+                                      }))
+                                    }
                                   />
-                                ) : (
-                                  <ClipboardList className="h-5 w-5 text-zinc-400" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-extrabold text-[#0F172A]">{item.name}</p>
-                                <p className="text-[10px] text-[#64748B] font-bold mt-0.5 uppercase tracking-wider">
-                                  {item.categoryName || "Beverages"}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 font-bold text-zinc-500 uppercase">
-                            {item.sku || "No SKU"}
-                          </td>
-                          <td className="py-4 px-6 font-bold text-zinc-500">
-                            {hasOptions ? (
-                              <span>
-                                1 {conversionName} = {conversion} {item.baseUnit}
-                              </span>
-                            ) : (
-                              <span>
-                                1 {item.baseUnit} = 1 {item.baseUnit}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-2 text-center border-r border-zinc-100 w-28">
-                            {hasOptions ? (
+                                  <select
+                                    className="bg-white border border-zinc-200 rounded-lg py-1.5 px-2 text-[10px] font-bold text-zinc-700 focus:outline-none focus:ring-1 focus:ring-[#16A34A] cursor-pointer"
+                                    value={counts.selectedOptionId}
+                                    onChange={(e) =>
+                                      setItemCounts((prev) => ({
+                                        ...prev,
+                                        [item.id]: {
+                                          ...counts,
+                                          selectedOptionId: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                  >
+                                    {item.countingOptions?.map((opt) => (
+                                      <option key={opt.id} value={opt.id}>
+                                        {opt.displayName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : (
+                                <span className="text-zinc-300 font-bold">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-6">
+                              {isCounted ? (
+                                <span className="bg-emerald-50 border border-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-extrabold text-xs">
+                                  {totalBaseQty.toFixed(2)} {item.baseUnit}
+                                </span>
+                              ) : (
+                                <span className="text-zinc-400 font-semibold">
+                                  Not Counted
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-2 w-28">
                               <input
-                                type="number"
-                                min="0"
-                                placeholder="--"
-                                className="w-20 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
-                                value={counts.countedCartons}
+                                type="text"
+                                placeholder="Add notes..."
+                                className="bg-transparent hover:bg-zinc-50 focus:bg-white border border-transparent focus:border-zinc-300 rounded-lg py-1 px-1.5 text-[10px] w-24 transition-all"
+                                value={counts.notes}
                                 onChange={(e) =>
                                   setItemCounts((prev) => ({
                                     ...prev,
                                     [item.id]: {
                                       ...counts,
-                                      countedCartons: e.target.value,
+                                      notes: e.target.value,
                                     },
                                   }))
                                 }
                               />
-                            ) : (
-                              <span className="text-zinc-300 font-bold">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-2 text-center w-28">
-                            <input
-                              type="number"
-                              min="0"
-                              step="any"
-                              placeholder="0"
-                              className="w-20 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
-                              value={counts.countedPieces}
-                              onChange={(e) =>
-                                setItemCounts((prev) => ({
-                                  ...prev,
-                                  [item.id]: {
-                                    ...counts,
-                                    countedPieces: e.target.value,
-                                  },
-                                }))
-                              }
-                            />
-                          </td>
-                          <td className="py-4 px-6">
-                            {isCounted ? (
-                              <span className="bg-emerald-50 border border-emerald-100 text-emerald-700 py-1 px-2.5 rounded-lg font-extrabold text-xs">
-                                {totalBaseQty.toFixed(2)} {item.baseUnit}
-                              </span>
-                            ) : (
-                              <span className="text-zinc-400 font-semibold">Not Counted</span>
-                            )}
-                          </td>
-                          <td className="py-4 px-6">
-                            <input
-                              type="text"
-                              placeholder="Add notes..."
-                              className="bg-transparent hover:bg-zinc-50 focus:bg-white border border-transparent focus:border-zinc-300 rounded-lg py-1 px-2 text-[10px] w-36 transition-all"
-                              value={counts.notes}
-                              onChange={(e) =>
-                                setItemCounts((prev) => ({
-                                  ...prev,
-                                  [item.id]: {
-                                    ...counts,
-                                    notes: e.target.value,
-                                  },
-                                }))
-                              }
-                            />
-                          </td>
-
-                        </tr>
-                      );
-                    })}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -717,9 +842,12 @@ export default function StockCountsPage() {
             {historySessions.length === 0 ? (
               <div className="bg-white border border-zinc-200 rounded-2xl py-20 px-6 text-center flex flex-col items-center justify-center shadow-sm">
                 <ClipboardList className="h-10 w-10 text-zinc-300 mb-3" />
-                <h3 className="text-base font-bold text-[#0F172A]">No past count sessions</h3>
+                <h3 className="text-base font-bold text-[#0F172A]">
+                  No past count sessions
+                </h3>
                 <p className="text-[#64748B] text-xs mt-1 font-semibold max-w-xs leading-relaxed">
-                  Start your first physical count audit to populate inventory history records.
+                  Start your first physical count audit to populate inventory
+                  history records.
                 </p>
               </div>
             ) : (
@@ -744,7 +872,10 @@ export default function StockCountsPage() {
                         const varianceValue = sess.totalVariance || 0;
 
                         return (
-                          <tr key={sess.id} className="hover:bg-zinc-50/40 transition-colors">
+                          <tr
+                            key={sess.id}
+                            className="hover:bg-zinc-50/40 transition-colors"
+                          >
                             <td className="py-4 px-6 font-extrabold text-[#0F172A]">
                               {sess.countDate}
                             </td>
@@ -791,10 +922,11 @@ export default function StockCountsPage() {
                                     onClick={async () => {
                                       try {
                                         setLoading(true);
-                                        const detailed = await getStockCountDetail(
-                                          activeBusinessId!,
-                                          sess.id
-                                        );
+                                        const detailed =
+                                          await getStockCountDetail(
+                                            activeBusinessId!,
+                                            sess.id,
+                                          );
                                         setSelectedDetailSession(detailed);
                                         setViewMode("detail");
                                       } catch (err) {
@@ -849,7 +981,8 @@ export default function StockCountsPage() {
                   Stock Count Summary
                 </h1>
                 <p className="text-[#64748B] text-xs font-bold mt-1.5">
-                  Detailed breakdown of physical inventory audit completed on {selectedDetailSession.countDate}.
+                  Detailed breakdown of physical inventory audit completed on{" "}
+                  {selectedDetailSession.countDate}.
                 </p>
               </div>
             </div>
@@ -883,9 +1016,13 @@ export default function StockCountsPage() {
                 <span className="text-[10px] font-bold text-zinc-400 uppercase block tracking-wider">
                   Total Variance Cost
                 </span>
-                <span className={`text-lg font-extrabold mt-1 block ${
-                  (selectedDetailSession.totalVariance || 0) < 0 ? "text-rose-600" : "text-emerald-600"
-                }`}>
+                <span
+                  className={`text-lg font-extrabold mt-1 block ${
+                    (selectedDetailSession.totalVariance || 0) < 0
+                      ? "text-rose-600"
+                      : "text-emerald-600"
+                  }`}
+                >
                   ${(selectedDetailSession.totalVariance || 0).toFixed(2)}
                 </span>
               </div>
@@ -897,7 +1034,6 @@ export default function StockCountsPage() {
                   <thead>
                     <tr className="border-b border-zinc-200 text-[10px] uppercase font-extrabold tracking-wider text-[#64748B] bg-zinc-50/50">
                       <th className="py-4 px-6">Item</th>
-                      <th className="py-4 px-6">SKU</th>
                       <th className="py-4 px-6 text-center">Expected (Base)</th>
                       <th className="py-4 px-6 text-center">Counted (Base)</th>
                       <th className="py-4 px-6 text-center">Variance Qty</th>
@@ -909,41 +1045,52 @@ export default function StockCountsPage() {
                     {(selectedDetailSession.items || []).map((ci) => {
                       const v = ci.variance || 0;
                       const cv = ci.costVariance || 0;
+                      const decoded = decodeNotes(ci.notes);
 
                       return (
-                        <tr key={ci.id} className="hover:bg-zinc-50/40 transition-colors">
+                        <tr
+                          key={ci.id}
+                          className="hover:bg-zinc-50/40 transition-colors"
+                        >
                           <td className="py-4 px-6 font-extrabold text-[#0F172A]">
                             {ci.itemName}
-                          </td>
-                          <td className="py-4 px-6 font-bold text-zinc-500 uppercase">
-                            {ci.itemSku || "No SKU"}
                           </td>
                           <td className="py-4 px-6 text-center font-bold text-zinc-700">
                             {ci.expectedQty} {ci.baseUnit}
                           </td>
                           <td className="py-4 px-6 text-center font-extrabold text-zinc-800">
-                            {ci.countedQty !== undefined ? `${ci.countedQty} ${ci.baseUnit}` : "Not Counted"}
+                            {ci.countedQty !== undefined
+                              ? `${ci.countedQty} ${ci.baseUnit}`
+                              : "Not Counted"}
                           </td>
                           <td className="py-4 px-6 text-center font-bold">
                             {v === 0 ? (
                               <span className="text-zinc-500">0</span>
                             ) : v < 0 ? (
-                              <span className="text-rose-600">{v.toFixed(2)}</span>
+                              <span className="text-rose-600">
+                                {v.toFixed(2)}
+                              </span>
                             ) : (
-                              <span className="text-emerald-600">+{v.toFixed(2)}</span>
+                              <span className="text-emerald-600">
+                                +{v.toFixed(2)}
+                              </span>
                             )}
                           </td>
                           <td className="py-4 px-6 text-center font-extrabold">
                             {cv === 0 ? (
                               <span className="text-zinc-500">$0.00</span>
                             ) : cv < 0 ? (
-                              <span className="text-rose-600">-${Math.abs(cv).toFixed(2)}</span>
+                              <span className="text-rose-600">
+                                -${Math.abs(cv).toFixed(2)}
+                              </span>
                             ) : (
-                              <span className="text-emerald-600">+${cv.toFixed(2)}</span>
+                              <span className="text-emerald-600">
+                                +${cv.toFixed(2)}
+                              </span>
                             )}
                           </td>
                           <td className="py-4 px-6 text-zinc-500 font-semibold italic">
-                            {ci.notes || "--"}
+                            {decoded.userNotes || "--"}
                           </td>
                         </tr>
                       );
@@ -966,24 +1113,34 @@ export default function StockCountsPage() {
             <div className="space-y-3 text-xs">
               <div className="flex justify-between font-semibold text-zinc-600">
                 <span>Total Items</span>
-                <span className="font-extrabold text-[#0F172A]">{totalItemsCount}</span>
+                <span className="font-extrabold text-[#0F172A]">
+                  {totalItemsCount}
+                </span>
               </div>
               <div className="flex justify-between font-semibold text-zinc-600">
                 <span>Counted Items</span>
-                <span className="font-extrabold text-emerald-600">{countedItemsCount}</span>
+                <span className="font-extrabold text-emerald-600">
+                  {countedItemsCount}
+                </span>
               </div>
               <div className="flex justify-between font-semibold text-zinc-600">
                 <span>Remaining Items</span>
-                <span className="font-extrabold text-zinc-800">{remainingItemsCount}</span>
+                <span className="font-extrabold text-zinc-800">
+                  {remainingItemsCount}
+                </span>
               </div>
               <div className="flex justify-between font-semibold text-zinc-600 border-t border-zinc-200 pt-2.5">
                 <span>Total Qty (Base)</span>
-                <span className="font-extrabold text-[#0F172A]">{totalCountedBaseQty.toFixed(2)}</span>
+                <span className="font-extrabold text-[#0F172A]">
+                  {totalCountedBaseQty.toFixed(2)}
+                </span>
               </div>
               {lastAutoSave && (
                 <div className="flex justify-between font-semibold text-zinc-600 border-t border-zinc-200 pt-2.5">
                   <span>Last Auto-save</span>
-                  <span className="font-bold text-zinc-500">{lastAutoSave}</span>
+                  <span className="font-bold text-zinc-500">
+                    {lastAutoSave}
+                  </span>
                 </div>
               )}
             </div>
@@ -994,16 +1151,18 @@ export default function StockCountsPage() {
               <h3 className="font-extrabold text-[#0F172A] uppercase tracking-wider">
                 Progress
               </h3>
-              <span className="font-extrabold text-[#16A34A]">{completionPercent}%</span>
+              <span className="font-extrabold text-[#16A34A]">
+                {completionPercent}%
+              </span>
             </div>
-            
+
             <div className="w-full bg-zinc-200 h-2.5 rounded-full overflow-hidden">
               <div
                 className="bg-[#16A34A] h-full rounded-full transition-all duration-300"
                 style={{ width: `${completionPercent}%` }}
               />
             </div>
-            
+
             <span className="text-[10px] font-bold text-zinc-400 block text-right mt-1">
               {countedItemsCount} of {totalItemsCount} items counted
             </span>
@@ -1021,14 +1180,23 @@ export default function StockCountsPage() {
             ) : (
               <div className="space-y-3">
                 {recentActivities.map((act, index) => (
-                  <div key={index} className="flex gap-2.5 items-start text-xs border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0">
+                  <div
+                    key={index}
+                    className="flex gap-2.5 items-start text-xs border-b border-zinc-100 pb-2.5 last:border-0 last:pb-0"
+                  >
                     <div className="h-6 w-6 rounded-full bg-[#DCFCE7] text-[#16A34A] font-bold flex items-center justify-center text-[10px] shrink-0 uppercase">
                       {act.user.substring(0, 2)}
                     </div>
                     <div>
-                      <p className="font-extrabold text-[#0F172A]">{act.user}</p>
-                      <p className="text-[10px] font-semibold text-zinc-500 mt-0.5">{act.text}</p>
-                      <span className="text-[9px] font-bold text-zinc-400 mt-0.5 block">{act.time}</span>
+                      <p className="font-extrabold text-[#0F172A]">
+                        {act.user}
+                      </p>
+                      <p className="text-[10px] font-semibold text-zinc-500 mt-0.5">
+                        {act.text}
+                      </p>
+                      <span className="text-[9px] font-bold text-zinc-400 mt-0.5 block">
+                        {act.time}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -1072,7 +1240,11 @@ export default function StockCountsPage() {
               className="border border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-700 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
               disabled={saving}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
               Save Draft
             </button>
             <button
@@ -1080,7 +1252,11 @@ export default function StockCountsPage() {
               className="bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
               disabled={saving}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 stroke-[3px]" />}
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 stroke-[3px]" />
+              )}
               Submit Count
             </button>
           </div>
