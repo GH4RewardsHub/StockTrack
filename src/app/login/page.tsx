@@ -33,6 +33,7 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await loginAdmin(email, password);
+      toast.success("Logged in successfully!");
       await fetchSession();
       await refreshProfile();
       router.push("/dashboard/business");
@@ -82,8 +83,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-
-
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider block">
@@ -95,7 +94,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   type="email"
-                  placeholder="admin@email.com"
+                  placeholder="Enter your email"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-3 pl-10 pr-4 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -114,7 +113,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-3 pl-10 pr-10 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -136,7 +135,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !email.trim() || !password}
               className="w-full bg-primary-green hover:bg-green-700 active:bg-green-800 text-white rounded-xl py-3 text-sm font-semibold tracking-wide shadow-md shadow-zinc-200 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? (

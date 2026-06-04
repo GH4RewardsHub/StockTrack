@@ -29,7 +29,6 @@ import {
   Menu,
   X,
   Loader2,
-  Search,
   Bell,
   GripVertical,
   Settings,
@@ -383,21 +382,6 @@ export default function DashboardLayout({
           <button className="p-1 rounded-lg hover:bg-zinc-200/50 text-zinc-400 hover:text-zinc-600">
             <ChevronsLeft className="h-4 w-4" />
           </button>
-        </div>
-
-        <div className="relative mb-5">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-400">
-            <Search className="h-4 w-4" />
-          </span>
-          <input
-            type="text"
-            readOnly
-            placeholder="Quick Find..."
-            className="w-full bg-white border border-zinc-200 rounded-xl py-2 pl-9 pr-8 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none cursor-pointer"
-          />
-          <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-zinc-400 font-bold">
-            ⌘K
-          </span>
         </div>
 
         <div className="flex-1 space-y-5">

@@ -121,7 +121,7 @@ export default function SignupPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="username"
+                  placeholder="Enter your name"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-4 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -140,7 +140,7 @@ export default function SignupPage() {
                 </div>
                 <input
                   type="email"
-                  placeholder="admin@email.com"
+                  placeholder="Enter your email"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-4 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -159,7 +159,7 @@ export default function SignupPage() {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-10 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -189,7 +189,7 @@ export default function SignupPage() {
                 </div>
                 <input
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Reenter your password"
                   className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-10 text-sm text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -211,8 +211,14 @@ export default function SignupPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-2 bg-primary-green hover:bg-green-700 active:bg-green-800 text-white rounded-xl py-3 text-sm font-semibold tracking-wide shadow-md shadow-zinc-200 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              disabled={
+                loading ||
+                !fullName.trim() ||
+                !email.trim() ||
+                !password ||
+                !confirmPassword
+              }
+              className={`w-full mt-2 bg-primary-green hover:bg-green-700 active:bg-green-800 text-white rounded-xl py-3 text-sm font-semibold tracking-wide shadow-md shadow-zinc-200 transition-all duration-200 flex items-center justify-center gap-2  disabled:opacity-50 ${loading || !fullName.trim() || !email.trim() || !password || !confirmPassword ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             >
               {loading ? (
                 <>
