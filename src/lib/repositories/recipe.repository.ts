@@ -13,6 +13,7 @@ const mapRecipe = (r: any): Recipe => ({
   description: r.description,
   status: r.status,
   isActive: r.status === "active",
+  salesAmount: r.sales_amount,
   createdAt: r.created_at,
   ingredientsCount: r.ingredients_count,
   costPerServing: r.cost_per_serving,
@@ -40,6 +41,7 @@ export const createRecipe = async (
     yield_unit: data.yieldUnit,
     description: data.description,
     status: data.status,
+    sales_amount: data.salesAmount,
     ingredients: data.ingredients.map((ing) => ({
       item_id: ing.itemId,
       qty_used: ing.qtyUsed,
@@ -66,6 +68,7 @@ export const updateRecipe = async (
     yield_unit: data.yieldUnit,
     description: data.description,
     status: data.status,
+    sales_amount: data.salesAmount,
     ingredients: data.ingredients.map((ing) => ({
       item_id: ing.itemId,
       qty_used: ing.qtyUsed,

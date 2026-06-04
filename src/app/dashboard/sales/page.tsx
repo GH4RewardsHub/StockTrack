@@ -144,7 +144,7 @@ export default function SalesEntryPage() {
         name: selectedRecipe.recipeName,
         recipeCode: selectedRecipe.recipeCode || "",
         unit: selectedRecipe.yieldUnit || "serving",
-        unitPrice: selectedRecipe.costPerServing || 0.0,
+        unitPrice: selectedRecipe.salesAmount || selectedRecipe.costPerServing || 0.0,
       };
       return updated;
     });

@@ -121,6 +121,7 @@ export interface Recipe {
   description?: string;
   status: "active" | "inactive";
   isActive: boolean;
+  salesAmount: number;
   createdAt: string;
   ingredientsCount?: number;
   costPerServing?: number;

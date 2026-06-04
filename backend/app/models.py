@@ -193,6 +193,7 @@ class Recipe(SQLModel, table=True):
     yield_unit: str = Field(default="serving")
     description: Optional[str] = None
     status: RecipeStatus = Field(default=RecipeStatus.active)
+    sales_amount: Optional[float] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     business: Business = Relationship(back_populates="recipes")

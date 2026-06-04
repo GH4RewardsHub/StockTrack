@@ -36,6 +36,7 @@ class RecipeCreate(SQLModel):
     yield_unit: str = "serving"
     description: Optional[str] = None
     status: RecipeStatus = RecipeStatus.active
+    sales_amount: float
     ingredients: List[RecipeIngredientCreate] = []
 
 
@@ -50,6 +51,7 @@ class RecipeOut(SQLModel):
     yield_unit: str
     description: Optional[str] = None
     status: RecipeStatus
+    sales_amount: Optional[float] = None
     created_at: datetime
     ingredients_count: int = 0
     cost_per_serving: float = 0.0
@@ -122,6 +124,12 @@ def create_business_recipe(
         ))
 
     cost_serving = total_cost / data.yield_qty if data.yield_qty > 0 else 0.0
+
+    recipe.sales_amount = data.sales_amount if data.sales_amount is not None else cost_serving
+    session.add(recipe)
+    session.commit()
+    session.refresh(recipe)
+
     cat_name = recipe.category.name if recipe.category else None
 
     return RecipeOut(
@@ -135,6 +143,7 @@ def create_business_recipe(
         yield_unit=recipe.yield_unit,
         description=recipe.description,
         status=recipe.status,
+        sales_amount=recipe.sales_amount,
         created_at=recipe.created_at,
         ingredients_count=len(ingredients_out),
         cost_per_serving=cost_serving,
@@ -189,6 +198,7 @@ def get_business_recipes(
             yield_unit=r.yield_unit,
             description=r.description,
             status=r.status,
+            sales_amount=r.sales_amount,
             created_at=r.created_at,
             ingredients_count=len(ingredients_out),
             cost_per_serving=cost_serving,
@@ -272,6 +282,12 @@ def update_business_recipe(
         ))
 
     cost_serving = total_cost / data.yield_qty if data.yield_qty > 0 else 0.0
+
+    recipe.sales_amount = data.sales_amount if data.sales_amount is not None else cost_serving
+    session.add(recipe)
+    session.commit()
+    session.refresh(recipe)
+
     cat_name = recipe.category.name if recipe.category else None
 
     return RecipeOut(
@@ -285,6 +301,7 @@ def update_business_recipe(
         yield_unit=recipe.yield_unit,
         description=recipe.description,
         status=recipe.status,
+        sales_amount=recipe.sales_amount,
         created_at=recipe.created_at,
         ingredients_count=len(ingredients_out),
         cost_per_serving=cost_serving,

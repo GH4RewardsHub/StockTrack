@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import AlertDialog from "@/components/alert-dialog";
 import { useBusinessStore } from "@/store/business-store";
@@ -22,7 +23,6 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
   AlertCircle,
   PlusCircle,
 } from "lucide-react";
@@ -66,26 +66,15 @@ export default function RecipesPage() {
   const [formIngredients, setFormIngredients] = useState<
     { itemId: string; qtyUsed: number }[]
   >([]);
+  const [formSalesAmount, setFormSalesAmount] = useState("");
+  const [isSalesAmountManuallySet, setIsSalesAmountManuallySet] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7;
-
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setActiveMenuId(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   useEffect(() => {
     if (!activeBusinessId) return;
@@ -127,6 +116,8 @@ export default function RecipesPage() {
     setFormDescription("");
     setFormStatus("active");
     setFormIngredients([]);
+    setFormSalesAmount("");
+    setIsSalesAmountManuallySet(false);
     setError(null);
     setShowDrawer(true);
   };
@@ -146,14 +137,15 @@ export default function RecipesPage() {
         qtyUsed: ing.qtyUsed,
       })),
     );
+    setFormSalesAmount(rec.salesAmount !== undefined && rec.salesAmount !== null ? String(rec.salesAmount) : "");
+    setIsSalesAmountManuallySet(true);
     setError(null);
     setShowDrawer(true);
-    setActiveMenuId(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeBusinessId || !formName.trim() || formYieldQty <= 0) {
+    if (!activeBusinessId || !formName.trim() || formYieldQty <= 0 || !formSalesAmount.trim() || parseFloat(formSalesAmount) < 0) {
       setError("Please fill in all required fields correctly.");
       return;
     }
@@ -192,6 +184,7 @@ export default function RecipesPage() {
         yieldUnit: formYieldUnit,
         description: formDescription.trim() || undefined,
         status: formStatus,
+        salesAmount: parseFloat(formSalesAmount),
         ingredients: ingredientsData,
       };
 
@@ -211,7 +204,6 @@ export default function RecipesPage() {
   };
 
   const handleDelete = (recId: string) => {
-    setActiveMenuId(null);
     setDeleteTarget(recId);
   };
 
@@ -267,6 +259,13 @@ export default function RecipesPage() {
     }
     return formYieldQty > 0 ? total / formYieldQty : 0;
   }, [formIngredients, stockItems, formYieldQty]);
+
+  // Sync sales amount with serving cost if not manually set
+  useEffect(() => {
+    if (!editId && !isSalesAmountManuallySet) {
+      setFormSalesAmount(currentServingCost > 0 ? currentServingCost.toFixed(2) : "");
+    }
+  }, [currentServingCost, isSalesAmountManuallySet, editId]);
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter((rec) => {
@@ -429,6 +428,9 @@ export default function RecipesPage() {
                     <th className="py-4 px-6 font-extrabold">
                       Cost per Serving
                     </th>
+                    <th className="py-4 px-6 font-extrabold">
+                      Sales Amount
+                    </th>
                     <th className="py-4 px-6 font-extrabold">Status</th>
                     <th className="py-4 px-6 font-extrabold text-right">
                       Actions
@@ -478,6 +480,10 @@ export default function RecipesPage() {
                         ${(rec.costPerServing ?? 0).toFixed(2)}
                       </td>
 
+                      <td className="py-4 px-6 font-extrabold text-zinc-950">
+                        ${(rec.salesAmount ?? rec.costPerServing ?? 0).toFixed(2)}
+                      </td>
+
                       <td className="py-4 px-6">
                         <div className="inline-flex items-center gap-1.5">
                           <span
@@ -499,40 +505,23 @@ export default function RecipesPage() {
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 text-right relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuId(
-                              activeMenuId === rec.id ? null : rec.id,
-                            );
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-[#0F172A] transition-colors cursor-pointer"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-
-                        {activeMenuId === rec.id && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-6 top-10 w-32 bg-white border border-zinc-200 rounded-xl shadow-lg py-1.5 z-10 text-left animate-fade-in"
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEditDrawer(rec)}
+                            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 hover:text-[#16A34A] transition-colors cursor-pointer"
+                            title="Edit"
                           >
-                            <button
-                              onClick={() => openEditDrawer(rec)}
-                              className="w-full px-4 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 hover:text-[#16A34A] transition-colors flex items-center gap-2 cursor-pointer"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                              Edit Details
-                            </button>
-                            <button
-                              onClick={() => handleDelete(rec.id)}
-                              className="w-full px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2 cursor-pointer border-t border-zinc-100"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Delete
-                            </button>
-                          </div>
-                        )}
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(rec.id)}
+                            className="p-1.5 rounded-lg hover:bg-rose-50 text-zinc-500 hover:text-rose-600 transition-colors cursor-pointer"
+                            title="Delete"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -701,6 +690,40 @@ export default function RecipesPage() {
                         value={formYieldUnit}
                         onChange={(e) => setFormYieldUnit(e.target.value)}
                       />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <div className="w-1/2 space-y-1.5">
+                      <label className="text-xs font-bold text-[#64748B] block">
+                        Calculated Serving Cost
+                      </label>
+                      <div className="bg-zinc-100 border border-zinc-200 rounded-xl py-2.5 px-3.5 text-xs text-zinc-600 font-bold flex items-center h-[38px] cursor-not-allowed">
+                        ${currentServingCost.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="w-1/2 space-y-1.5">
+                      <label className="text-xs font-bold text-[#0F172A] block">
+                        Sales Amount <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-400 text-xs font-semibold">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          step="any"
+                          min={0}
+                          required
+                          placeholder="0.00"
+                          className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-8 pr-3.5 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
+                          value={formSalesAmount}
+                          onChange={(e) => {
+                            setFormSalesAmount(e.target.value);
+                            setIsSalesAmountManuallySet(true);
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
 
