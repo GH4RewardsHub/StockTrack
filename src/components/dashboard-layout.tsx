@@ -26,6 +26,7 @@ import {
   LogOut,
   Building2,
   ChevronDown,
+  ChevronRight,
   Menu,
   X,
   Loader2,
@@ -33,6 +34,7 @@ import {
   GripVertical,
   Settings,
   ChevronsLeft,
+  ChevronsRight,
   Check,
   ShoppingCart,
   FileDown,
@@ -65,8 +67,12 @@ export default function DashboardLayout({
   const [showHeaderLocationDropdown, setShowHeaderLocationDropdown] =
     useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [locationsLoaded, setLocationsLoaded] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<
+    Record<string, boolean>
+  >({});
 
   const businessDropdownRef = useRef<HTMLDivElement>(null);
   const locationDropdownRef = useRef<HTMLDivElement>(null);
@@ -327,18 +333,36 @@ export default function DashboardLayout({
 
   const isActive = (href: string) => pathname === href;
 
-  const renderLink = (link: SidebarLink, hasGrip = false) => {
+  const toggleGroup = (groupName: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
+
+  const isGroupCollapsed = (groupName: string, links: SidebarLink[]) => {
+    // Auto-expand if the active page is in this group
+    if (links.some((link) => isActive(link.href))) return false;
+    return !!collapsedGroups[groupName];
+  };
+
+  const renderLink = (
+    link: SidebarLink,
+    hasGrip = false,
+    isCollapsed = false,
+  ) => {
     const active = isActive(link.href);
     return (
       <a
         key={link.href}
         href={link.href}
+        title={isCollapsed ? link.name : undefined}
         onClick={(e) => {
           e.preventDefault();
           router.push(link.href);
           setMobileSidebarOpen(false);
         }}
-        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+        className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"} px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
           active
             ? "bg-[#DCFCE7] text-[#16A34A]"
             : "text-zinc-600 hover:text-[#0F172A] hover:bg-zinc-200/50"
@@ -348,12 +372,72 @@ export default function DashboardLayout({
           <link.icon
             className={`h-4.5 w-4.5 ${active ? "text-[#16A34A]" : "text-zinc-400"}`}
           />
-          <span>{link.name}</span>
+          {!isCollapsed && <span>{link.name}</span>}
         </div>
-        {hasGrip && (
+        {!isCollapsed && hasGrip && (
           <GripVertical className="h-3.5 w-3.5 text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
       </a>
+    );
+  };
+
+  const renderGroup = (
+    groupName: string,
+    links: SidebarLink[],
+    options?: { hasGrip?: boolean; extraContent?: React.ReactNode },
+    isSidebarCollapsed = false,
+  ) => {
+    const collapsed = isSidebarCollapsed
+      ? false
+      : isGroupCollapsed(groupName, links);
+    return (
+      <div key={groupName} className="space-y-1">
+        {!isSidebarCollapsed ? (
+          <button
+            onClick={() => toggleGroup(groupName)}
+            className="w-full flex items-center justify-between px-3 py-1 cursor-pointer group/header hover:bg-zinc-200/30 rounded-md transition-colors"
+          >
+            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] group-hover/header:text-zinc-700 transition-colors">
+              {groupName}
+            </span>
+            <ChevronRight
+              className={`h-3 w-3 text-zinc-400 transition-transform duration-200 ${
+                collapsed ? "" : "rotate-90"
+              }`}
+            />
+          </button>
+        ) : (
+          <div className="border-t border-zinc-200 my-2 first:hidden" />
+        )}
+        <div
+          className={`space-y-0.5 overflow-hidden transition-all duration-200 ${
+            collapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+          }`}
+        >
+          {links.map((link) =>
+            options?.hasGrip && !isSidebarCollapsed ? (
+              <div key={link.href} className="group relative">
+                {renderLink(link, true, isSidebarCollapsed)}
+              </div>
+            ) : (
+              renderLink(link, false, isSidebarCollapsed)
+            ),
+          )}
+          {options?.extraContent &&
+            (!isSidebarCollapsed || groupName === "Admin") &&
+            (isSidebarCollapsed ? (
+              <button
+                onClick={handleLogout}
+                title="Log Out"
+                className="w-full flex items-center justify-center px-3 py-2 rounded-lg text-xs font-bold text-zinc-600 hover:text-[#EF4444] hover:bg-rose-50/50 transition-all cursor-pointer"
+              >
+                <LogOut className="h-4.5 w-4.5 text-zinc-400" />
+              </button>
+            ) : (
+              options.extraContent
+            ))}
+        </div>
+      </div>
     );
   };
 
@@ -370,101 +454,85 @@ export default function DashboardLayout({
 
   return (
     <div className="relative min-h-screen flex bg-white text-[#0F172A] font-sans overflow-x-hidden">
-      <aside className="hidden lg:flex flex-col w-60 border-r border-zinc-200 bg-[#F1F5F9] shrink-0 sticky top-0 h-screen p-4 z-20 overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
+      <aside
+        className={`hidden lg:flex flex-col ${sidebarCollapsed ? "w-16 px-2 py-4" : "w-60 p-4"} border-r border-zinc-200 bg-[#F1F5F9] shrink-0 sticky top-0 h-screen z-20 overflow-y-auto transition-all duration-300`}
+      >
+        <div
+          className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"} mb-5`}
+        >
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-[#DCFCE7] border border-[#16A34A]/20 flex items-center justify-center shadow-sm">
               <span className="text-[#16A34A] font-extrabold text-base tracking-tighter">
                 S
               </span>
             </div>
-            <span className="font-extrabold text-base tracking-tight text-[#0F172A]">
-              StockTrack
-            </span>
+            {!sidebarCollapsed && (
+              <span className="font-extrabold text-base tracking-tight text-[#0F172A]">
+                StockTrack
+              </span>
+            )}
           </div>
-          <button className="p-1 rounded-lg hover:bg-zinc-200/50 text-zinc-400 hover:text-zinc-600">
-            <ChevronsLeft className="h-4 w-4" />
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-1 rounded-lg hover:bg-zinc-200/50 text-zinc-400 hover:text-zinc-600"
+          >
+            {sidebarCollapsed ? (
+              <ChevronsRight className="h-4 w-4" />
+            ) : (
+              <ChevronsLeft className="h-4 w-4" />
+            )}
           </button>
         </div>
 
-        <div className="flex-1 space-y-5">
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Pinned
-            </span>
-            <div className="space-y-0.5">
-              {pinnedLinks.map((link) => (
-                <div key={link.href} className="group relative">
-                  {renderLink(link, true)}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Overview
-            </span>
-            <div className="space-y-0.5">
-              {overviewLinks.map((link) => renderLink(link))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Inventory Setup
-            </span>
-            <div className="space-y-0.5">
-              {masterDataLinks.map((link) => renderLink(link))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Stock Operations
-            </span>
-            <div className="space-y-0.5">
-              {operationsLinks.map((link) => renderLink(link))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Sales & Usage
-            </span>
-            <div className="space-y-0.5">
-              {salesLinks.map((link) => renderLink(link))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Analysis
-            </span>
-            <div className="space-y-0.5">
-              {analysisLinks.map((link) => renderLink(link))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-              Admin
-            </span>
-            <div className="space-y-0.5">
-              {adminLinks.map((link) => renderLink(link))}
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-600 hover:text-[#EF4444] hover:bg-rose-50/50 transition-all cursor-pointer"
-              >
-                <LogOut className="h-4.5 w-4.5 text-zinc-400" />
-                <span>Log Out</span>
-              </button>
-            </div>
-          </div>
+        <div className="flex-1 space-y-3">
+          {renderGroup(
+            "Pinned",
+            pinnedLinks,
+            { hasGrip: true },
+            sidebarCollapsed,
+          )}
+          {renderGroup("Overview", overviewLinks, undefined, sidebarCollapsed)}
+          {renderGroup(
+            "Inventory Setup",
+            masterDataLinks,
+            undefined,
+            sidebarCollapsed,
+          )}
+          {renderGroup(
+            "Stock Operations",
+            operationsLinks,
+            undefined,
+            sidebarCollapsed,
+          )}
+          {renderGroup(
+            "Sales & Usage",
+            salesLinks,
+            undefined,
+            sidebarCollapsed,
+          )}
+          {renderGroup("Analysis", analysisLinks, undefined, sidebarCollapsed)}
+          {renderGroup(
+            "Admin",
+            adminLinks,
+            {
+              extraContent: (
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-600 hover:text-[#EF4444] hover:bg-rose-50/50 transition-all cursor-pointer"
+                >
+                  <LogOut className="h-4.5 w-4.5 text-zinc-400" />
+                  <span>Log Out</span>
+                </button>
+              ),
+            },
+            sidebarCollapsed,
+          )}
         </div>
 
-        <div className="pt-4 border-t border-zinc-200 mt-4 text-[10px] font-bold text-[#64748B]">
-          v1.0.0
+        <div
+          className={`pt-4 border-t border-zinc-200 mt-4 text-[10px] font-bold text-[#64748B] ${sidebarCollapsed ? "text-center" : ""}`}
+        >
+          {sidebarCollapsed ? "v1.0" : "v1.0.0"}
         </div>
       </aside>
 
@@ -489,76 +557,24 @@ export default function DashboardLayout({
               </span>
             </div>
 
-            <div className="flex-1 space-y-5">
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Pinned
-                </span>
-                <div className="space-y-0.5">
-                  {pinnedLinks.map((link) => renderLink(link))}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Overview
-                </span>
-                <div className="space-y-0.5">
-                  {overviewLinks.map((link) => renderLink(link))}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Inventory Setup
-                </span>
-                <div className="space-y-0.5">
-                  {masterDataLinks.map((link) => renderLink(link))}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Stock Operations
-                </span>
-                <div className="space-y-0.5">
-                  {operationsLinks.map((link) => renderLink(link))}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Sales & Usage
-                </span>
-                <div className="space-y-0.5">
-                  {salesLinks.map((link) => renderLink(link))}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Analysis
-                </span>
-                <div className="space-y-0.5">
-                  {analysisLinks.map((link) => renderLink(link))}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[9px] uppercase font-extrabold tracking-widest text-[#64748B] px-3 block">
-                  Admin
-                </span>
-                <div className="space-y-0.5">
-                  {adminLinks.map((link) => renderLink(link))}
+            <div className="flex-1 space-y-3">
+              {renderGroup("Pinned", pinnedLinks, { hasGrip: true })}
+              {renderGroup("Overview", overviewLinks)}
+              {renderGroup("Inventory Setup", masterDataLinks)}
+              {renderGroup("Stock Operations", operationsLinks)}
+              {renderGroup("Sales & Usage", salesLinks)}
+              {renderGroup("Analysis", analysisLinks)}
+              {renderGroup("Admin", adminLinks, {
+                extraContent: (
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-[#64748B] hover:text-[#EF4444] cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-[#64748B] hover:text-[#EF4444] hover:bg-rose-50/50 cursor-pointer transition-all"
                   >
                     <LogOut className="h-4.5 w-4.5 text-zinc-400" />
                     <span>Log Out</span>
                   </button>
-                </div>
-              </div>
+                ),
+              })}
             </div>
           </aside>
           <div className="flex-1" onClick={() => setMobileSidebarOpen(false)} />
