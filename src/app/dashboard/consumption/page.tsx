@@ -4,7 +4,7 @@
 "use client";
 
 import { useAuth } from "@/providers/auth-provider";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useBusinessStore } from "@/store/business-store";
 import { useLocationStore } from "@/store/location-store";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
@@ -46,10 +46,19 @@ export default function ConsumptionPage() {
 
   const [period, setPeriod] = useState<
     "daily" | "weekly" | "monthly" | "custom"
-  >("daily");
+  >("custom");
 
   const getTodayString = () => {
     const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const getDaysAgoString = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -61,8 +70,117 @@ export default function ConsumptionPage() {
   });
 
   const [dateRangeOption, setDateRangeOption] = useState<string>("Custom");
-  const [startDate, setStartDate] = useState<string>(() => getTodayString());
+  const [startDate, setStartDate] = useState<string>(() =>
+    getDaysAgoString(30),
+  );
   const [endDate, setEndDate] = useState<string>(() => getTodayString());
+
+  // Custom Calendar State and Logic
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        calendarRef.current &&
+        !calendarRef.current.contains(event.target as Node)
+      ) {
+        setIsCalendarOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const prevMonth = () => {
+    setCalendarMonth(
+      new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1),
+    );
+  };
+
+  const nextMonth = () => {
+    setCalendarMonth(
+      new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1),
+    );
+  };
+
+  const formatLocalDate = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const handleDateClick = (date: Date) => {
+    const dateStr = formatLocalDate(date);
+
+    if (!startDate || (startDate && endDate)) {
+      setStartDate(dateStr);
+      setEndDate("");
+      setPeriod("custom");
+    } else {
+      if (dateStr < startDate) {
+        setStartDate(dateStr);
+        setEndDate("");
+      } else {
+        setEndDate(dateStr);
+        setPeriod("custom");
+        setIsCalendarOpen(false);
+      }
+    }
+  };
+
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const dayOfWeek = firstDay.getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const prevMonthTotalDays = new Date(year, month, 0).getDate();
+
+    const days: { date: Date; isCurrentMonth: boolean }[] = [];
+
+    for (let i = dayOfWeek - 1; i >= 0; i--) {
+      days.push({
+        date: new Date(year, month - 1, prevMonthTotalDays - i),
+        isCurrentMonth: false,
+      });
+    }
+
+    for (let i = 1; i <= totalDays; i++) {
+      days.push({
+        date: new Date(year, month, i),
+        isCurrentMonth: true,
+      });
+    }
+
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      days.push({
+        date: new Date(year, month + 1, i),
+        isCurrentMonth: false,
+      });
+    }
+
+    return days;
+  }, [calendarMonth]);
+
+  const formattedDateRange = useMemo(() => {
+    if (!startDate) return "Select Date Range";
+    const options: Intl.DateTimeFormatOptions = {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    };
+    const startFormatted = new Date(startDate).toLocaleDateString(
+      "en-US",
+      options,
+    );
+    if (!endDate) return `${startFormatted} to ...`;
+    const endFormatted = new Date(endDate).toLocaleDateString("en-US", options);
+    return `${startFormatted} — ${endFormatted}`;
+  }, [startDate, endDate]);
 
   const [filterLocationId, setFilterLocationId] = useState<string>("all");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
@@ -164,6 +282,8 @@ export default function ConsumptionPage() {
     activeBusinessId,
     period,
     selectedDate,
+    startDate,
+    endDate,
     filterLocationId,
     filterCategoryId,
     filterStockItemId,
@@ -322,319 +442,116 @@ export default function ConsumptionPage() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Custom Date Range Popover */}
+            <div className="relative" ref={calendarRef}>
+              <button
+                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                className="flex items-center gap-2.5 px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 shadow-2xs transition duration-200 cursor-pointer"
+              >
+                <Calendar className="h-4 w-4 text-[#16A34A]" />
+                <span>{formattedDateRange}</span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 ${isCalendarOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isCalendarOpen && (
+                <div className="absolute right-0 mt-2 p-4 bg-white border border-zinc-200 rounded-2xl shadow-xl z-50 w-[300px] animate-fade-in select-none">
+                  {/* Calendar header with Prev / Next month */}
+                  <div className="flex justify-between items-center mb-3">
+                    <button
+                      type="button"
+                      onClick={prevMonth}
+                      className="p-1 hover:bg-zinc-100 rounded-lg text-zinc-600 cursor-pointer"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-xs font-extrabold text-zinc-800">
+                      {calendarMonth.toLocaleDateString("en-US", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={nextMonth}
+                      className="p-1 hover:bg-zinc-100 rounded-lg text-zinc-600 cursor-pointer"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Day names */}
+                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-extrabold text-zinc-400 mb-1">
+                    <span>Su</span>
+                    <span>Mo</span>
+                    <span>Tu</span>
+                    <span>We</span>
+                    <span>Th</span>
+                    <span>Fr</span>
+                    <span>Sa</span>
+                  </div>
+
+                  {/* Days grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarDays.map((day, idx) => {
+                      const dateStr = formatLocalDate(day.date);
+                      const isStart = dateStr === startDate;
+                      const isEnd = dateStr === endDate;
+                      const isBetween =
+                        startDate &&
+                        endDate &&
+                        dateStr > startDate &&
+                        dateStr < endDate;
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleDateClick(day.date)}
+                          className={`h-8 w-8 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center cursor-pointer ${
+                            isStart || isEnd
+                              ? "bg-[#16A34A] text-white"
+                              : isBetween
+                                ? "bg-emerald-50 text-[#16A34A]"
+                                : day.isCurrentMonth
+                                  ? "text-zinc-700 hover:bg-zinc-100"
+                                  : "text-zinc-300 hover:bg-zinc-50/50"
+                          }`}
+                        >
+                          {day.date.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => window.print()}
               className="flex items-center justify-center gap-2 border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             >
               <Download className="h-4 w-4" />
               <span>Export</span>
-              <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
             </button>
           </div>
         </div>
 
+        {/* Period tabs, charts cards, and consumption graph commented out as requested */}
+        {/*
         <div className="flex items-center gap-2 border-b border-zinc-100 pb-2">
-          {(["daily", "weekly", "monthly", "custom"] as const).map((p) => {
-            const isActive = period === p;
-            return (
-              <button
-                key={p}
-                onClick={() => {
-                  setPeriod(p);
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? "bg-[#DCFCE7] text-[#16A34A]"
-                    : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"
-                }`}
-              >
-                {p}
-              </button>
-            );
-          })}
+          ...
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="relative bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all overflow-hidden flex flex-col justify-between min-h-[110px]">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500">
-                  Total Consumption
-                </span>
-                <div className="h-7 w-7 rounded-full bg-emerald-50 text-[#16A34A] flex items-center justify-center border border-emerald-100">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-extrabold text-[#0F172A] mt-2">
-                {analysisData?.summary.total_consumption.toLocaleString(
-                  undefined,
-                  { maximumFractionDigits: 1 },
-                ) || "0"}
-              </h3>
-              <p className="text-[10px] text-zinc-400 font-bold mt-1">
-                Base Units
-              </p>
-            </div>
-            {renderSparkline("#16A34A", "spark-green")}
-          </div>
-
-          <div className="relative bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all overflow-hidden flex flex-col justify-between min-h-[110px]">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500">
-                  Total Value
-                </span>
-                <div className="h-7 w-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                  <DollarSign className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-extrabold text-[#0F172A] mt-2">
-                $
-                {analysisData?.summary.total_value.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) || "0.00"}
-              </h3>
-              <p className="text-[10px] text-zinc-400 font-bold mt-1">
-                Value Sum
-              </p>
-            </div>
-            {renderSparkline("#3B82F6", "spark-blue")}
-          </div>
-
-          <div className="relative bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all overflow-hidden flex flex-col justify-between min-h-[110px]">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500">
-                  Items Consumed
-                </span>
-                <div className="h-7 w-7 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
-                  <Boxes className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-extrabold text-[#0F172A] mt-2">
-                {analysisData?.summary.items_consumed_count || "0"}
-              </h3>
-              <p className="text-[10px] text-zinc-400 font-bold mt-1">
-                Unique Items
-              </p>
-            </div>
-            {renderSparkline("#F97316", "spark-orange")}
-          </div>
-
-          <div className="relative bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xs hover:shadow-xs transition-all overflow-hidden flex flex-col justify-between min-h-[110px]">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500">
-                  vs Yesterday
-                </span>
-                <div className="h-7 w-7 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
-                  <Percent className="h-3.5 w-3.5" />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <h3
-                  className={`text-2xl font-extrabold ${
-                    (analysisData?.summary.vs_yesterday_units || 0) >= 0
-                      ? "text-[#16A34A]"
-                      : "text-rose-600"
-                  }`}
-                >
-                  {analysisData?.summary.vs_yesterday_pct
-                    ? analysisData.summary.vs_yesterday_pct >= 0
-                      ? "+"
-                      : ""
-                    : ""}
-                  {analysisData?.summary.vs_yesterday_pct.toFixed(1) || "0.0"}%
-                </h3>
-                <span className="text-[10px] text-zinc-500 font-bold">
-                  (
-                  {analysisData?.summary.vs_yesterday_units
-                    ? analysisData.summary.vs_yesterday_units >= 0
-                      ? "+"
-                      : ""
-                    : ""}
-                  {analysisData?.summary.vs_yesterday_units.toFixed(0) || "0"}{" "}
-                  Base Units)
-                </span>
-              </div>
-              <p className="text-[10px] text-zinc-400 font-bold mt-1">
-                Period Comparison
-              </p>
-            </div>
-            {renderSparkline("#8B5CF6", "spark-purple")}
-          </div>
+          ...
         </div>
 
         <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xs">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h3 className="text-base font-extrabold text-[#0F172A]">
-                Consumption Over Time
-              </h3>
-              <p className="text-[10px] text-zinc-400 font-bold mt-0.5">
-                Dynamic timeline tracking values based on selected periods.
-              </p>
-            </div>
-
-            {period === "daily" && (
-              <div className="flex items-center gap-2 border border-zinc-200 rounded-xl px-2 py-1 shadow-3xs bg-white">
-                <button
-                  onClick={handlePrevDay}
-                  className="p-1 rounded-lg hover:bg-zinc-100 text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <div className="flex items-center gap-1.5 px-1.5 text-xs font-bold text-zinc-700">
-                  <Calendar className="h-3.5 w-3.5 text-[#16A34A]" />
-                  <span>{formattedDateHeader}</span>
-                </div>
-                <button
-                  onClick={handleNextDay}
-                  className="p-1 rounded-lg hover:bg-zinc-100 text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="relative w-full h-[220px] select-none">
-            {loading ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60">
-                <Loader2 className="h-6 w-6 text-[#16A34A] animate-spin mb-2" />
-                <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest">
-                  Calculating graph...
-                </span>
-              </div>
-            ) : svgChartPoints.length === 0 ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <TrendingUp className="h-8 w-8 text-zinc-300 mb-2" />
-                <span className="text-[10px] font-extrabold text-zinc-400">
-                  No timeline coordinates computed.
-                </span>
-              </div>
-            ) : (
-              <div className="w-full h-full flex">
-                <div className="w-12 h-[180px] flex flex-col justify-between text-[9px] font-bold text-zinc-400 text-right pr-2">
-                  <span>
-                    {maxChartValue >= 10
-                      ? (maxChartValue * 0.9).toFixed(0)
-                      : maxChartValue > 1
-                        ? (maxChartValue * 0.9).toFixed(1)
-                        : (maxChartValue * 0.9).toFixed(2)}
-                  </span>
-                  <span>
-                    {maxChartValue >= 10
-                      ? (maxChartValue * 0.6).toFixed(0)
-                      : maxChartValue > 1
-                        ? (maxChartValue * 0.6).toFixed(1)
-                        : (maxChartValue * 0.6).toFixed(2)}
-                  </span>
-                  <span>
-                    {maxChartValue >= 10
-                      ? (maxChartValue * 0.3).toFixed(0)
-                      : maxChartValue > 1
-                        ? (maxChartValue * 0.3).toFixed(1)
-                        : (maxChartValue * 0.3).toFixed(2)}
-                  </span>
-                  <span>0</span>
-                </div>
-
-                <div className="flex-1 flex flex-col">
-                  <div className="relative flex-1 h-[180px] border-b border-l border-zinc-150">
-                    <div className="absolute left-0 right-0 top-[30%] border-t border-zinc-100 border-dashed" />
-                    <div className="absolute left-0 right-0 top-[60%] border-t border-zinc-100 border-dashed" />
-
-                    <svg
-                      className="w-full h-full overflow-visible"
-                      viewBox="0 0 680 180"
-                      preserveAspectRatio="none"
-                    >
-                      <defs>
-                        <linearGradient
-                          id="area-grad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#16A34A"
-                            stopOpacity="0.25"
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#16A34A"
-                            stopOpacity="0"
-                          />
-                        </linearGradient>
-                      </defs>
-
-                      <path d={svgAreaD} fill="url(#area-grad)" />
-                      <path
-                        d={svgPathD}
-                        fill="none"
-                        stroke="#16A34A"
-                        strokeWidth="2.5"
-                      />
-
-                      {svgChartPoints.map((pt: any, i: number) => (
-                        <g key={i} className="group/dot cursor-pointer">
-                          <circle
-                            cx={pt.x}
-                            cy={pt.y}
-                            r="4"
-                            fill="#16A34A"
-                            stroke="#FFFFFF"
-                            strokeWidth="2.5"
-                            className="transition-all duration-150 hover:scale-125"
-                          />
-                          <g className="opacity-0 group-hover/dot:opacity-100 transition-opacity duration-200 pointer-events-none">
-                            <rect
-                              x={pt.x - 35}
-                              y={pt.y - 32}
-                              width="70"
-                              height="22"
-                              rx="6"
-                              fill="#0F172A"
-                            />
-                            <text
-                              x={pt.x}
-                              y={pt.y - 18}
-                              fill="#FFFFFF"
-                              fontSize="9"
-                              fontWeight="bold"
-                              textAnchor="middle"
-                            >
-                              {pt.val.toFixed(0)} Units
-                            </text>
-                          </g>
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
-
-                  <div className="h-8 flex justify-between items-center text-[9px] font-bold text-zinc-400 pt-2 border-l border-zinc-100">
-                    {svgChartPoints.map((pt: any, i: number) => (
-                      <span
-                        key={i}
-                        className="text-center"
-                        style={{
-                          width: `${100 / svgChartPoints.length}%`,
-                        }}
-                      >
-                        {pt.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          ...
         </div>
+        */}
 
         <div className="bg-white border border-zinc-200 rounded-2xl shadow-2xs overflow-hidden">
           <div className="p-5 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -811,6 +728,8 @@ export default function ConsumptionPage() {
         </div>
       </div>
 
+      {/* Sidebar Filter Form commented out as requested */}
+      {/*
       <aside className="w-80 border-l border-zinc-200 bg-[#F8FAFC] p-5 shrink-0 hidden xl:flex flex-col justify-between sticky top-16 h-[calc(100vh-64px)] z-10 overflow-y-auto">
         <div className="space-y-6">
           <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
@@ -818,167 +737,10 @@ export default function ConsumptionPage() {
               <Filter className="h-4.5 w-4.5 text-[#16A34A]" />
               <h3 className="text-sm font-extrabold text-[#0F172A]">Filters</h3>
             </div>
-            <button
-              onClick={handleClearFilters}
-              className="text-[10px] font-extrabold uppercase tracking-wider text-[#16A34A] hover:text-[#15803D] cursor-pointer"
-            >
-              Clear All
-            </button>
           </div>
-
-          <div className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A] block">
-                Date Range
-              </label>
-              <div className="relative">
-                <select
-                  value={dateRangeOption}
-                  onChange={(e) => {
-                    setDateRangeOption(e.target.value);
-                    if (e.target.value !== "Custom") {
-                      setPeriod("daily");
-                    } else {
-                      setPeriod("custom");
-                    }
-                  }}
-                  className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] cursor-pointer"
-                >
-                  <option value="Custom">Custom</option>
-                  <option value="Daily">Daily (Timeline switch)</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {dateRangeOption === "Custom" && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-zinc-500 uppercase block">
-                    From
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded-xl py-2 px-2.5 text-xs text-zinc-950 font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-extrabold text-zinc-500 uppercase block">
-                    To
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 rounded-xl py-2 px-2.5 text-xs text-zinc-950 font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A] block">
-                Category
-              </label>
-              <div className="relative">
-                <select
-                  value={filterCategoryId}
-                  onChange={(e) => setFilterCategoryId(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] cursor-pointer"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A] block">
-                Stock Item
-              </label>
-              <div className="relative">
-                <select
-                  value={filterStockItemId}
-                  onChange={(e) => setFilterStockItemId(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] cursor-pointer"
-                >
-                  <option value="all">All Stock Items</option>
-                  {stockItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A] block">
-                Group By
-              </label>
-              <div className="relative">
-                <select
-                  value={filterGroupBy}
-                  onChange={(e) => setFilterGroupBy(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] cursor-pointer"
-                >
-                  <option value="none">None</option>
-                  <option value="category">Category</option>
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0F172A] block">
-                Show
-              </label>
-              <div className="relative">
-                <select
-                  value={filterShow}
-                  onChange={(e) => setFilterShow(e.target.value)}
-                  className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-2xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] cursor-pointer"
-                >
-                  <option value="top_consumed">Top Consumed Items</option>
-                  <option value="all">All Items</option>
-                </select>
-                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-6 border-t border-zinc-200">
-          <button
-            onClick={handleApplyFilters}
-            className="w-full bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-150 cursor-pointer"
-          >
-            Apply Filters
-          </button>
-
-          <button
-            onClick={handleApplyFilters}
-            className="w-full border border-zinc-200 hover:bg-zinc-50 bg-white text-zinc-700 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-all duration-150 cursor-pointer flex items-center justify-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            <span>Save as Report</span>
-          </button>
-
-          <p className="text-[10px] text-zinc-400 font-bold text-center">
-            All consumption is based on base units.
-          </p>
         </div>
       </aside>
+      */}
 
       {selectedItemForFormula && (
         <>
