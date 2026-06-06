@@ -294,6 +294,7 @@ export default function DashboardLayout({
   ];
 
   const operationsLinks: SidebarLink[] = [
+    { name: "Stock Counts", href: "/dashboard/counts", icon: ClipboardList },
     {
       name: "Refill Planner",
       href: "/dashboard/refill-planner",
@@ -305,7 +306,6 @@ export default function DashboardLayout({
       icon: FileText,
     },
     { name: "Deliveries", href: "/dashboard/deliveries", icon: PackageOpen },
-    { name: "Stock Counts", href: "/dashboard/counts", icon: ClipboardList },
   ];
 
   const salesLinks: SidebarLink[] = [

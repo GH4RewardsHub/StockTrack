@@ -636,28 +636,27 @@ export default function StockCountsPage() {
                     <tr className="border-b border-zinc-200 text-[10px] uppercase font-extrabold tracking-wider text-[#64748B] bg-zinc-50/50">
                       <th className="py-4 px-6 w-12 text-center">#</th>
                       <th className="py-4 px-6">Item</th>
-                      <th className="py-4 px-6 w-64">Unit Info</th>
                       <th className="py-4 px-6 text-center w-80" colSpan={3}>
                         Counted Quantity
                       </th>
                       <th className="py-4 px-6">Total (Base Unit)</th>
                     </tr>
                     <tr className="border-b border-zinc-200 text-[9px] uppercase font-extrabold tracking-wider text-zinc-400 bg-zinc-50/20">
-                      <th colSpan={3} />
-                      <th className="py-2 px-1 text-center border-r border-zinc-100 w-32">
-                        Base Qty
-                      </th>
+                      <th colSpan={2} />
                       <th className="py-2 px-1 text-center border-r border-zinc-100 w-48">
                         1st Option
                       </th>
-                      <th className="py-2 px-1 text-center w-48">2nd Option</th>
+                      <th className="py-2 px-1 text-center border-r border-zinc-100 w-48">
+                        2nd Option
+                      </th>
+                      <th className="py-2 px-1 text-center w-32">Base Qty</th>
                       <th colSpan={1} />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 text-xs text-[#0F172A]">
                     {filteredItems.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-16 px-6 text-center">
+                        <td colSpan={6} className="py-16 px-6 text-center">
                           <div className="flex flex-col items-center justify-center max-w-md mx-auto">
                             <div className="h-12 w-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center mb-3 shadow-xs">
                               <ClipboardList className="h-6 w-6 text-zinc-400 stroke-[1.5]" />
@@ -736,24 +735,69 @@ export default function StockCountsPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4 px-6 font-bold text-zinc-500">
-                              {hasOptions ? (
-                                <div className="flex flex-col gap-0.5">
-                                  {item.countingOptions?.map((opt, idx) => (
-                                    <span key={opt.id || idx}>
-                                      1 {opt.displayName} ={" "}
-                                      {opt.conversionToBaseQty} {item.baseUnit}
-                                    </span>
-                                  ))}
+                            <td className="py-3 px-2 text-center border-r border-zinc-100 w-48">
+                              {hasOptions && item.countingOptions?.[0] ? (
+                                <div className="flex flex-col items-center gap-1 justify-center">
+                                  <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">
+                                    {item.countingOptions[0].displayName}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    className="w-16 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
+                                    value={counts.countedCartons}
+                                    onChange={(e) =>
+                                      setItemCounts((prev) => ({
+                                        ...prev,
+                                        [item.id]: {
+                                          ...counts,
+                                          countedCartons: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                  />
                                 </div>
                               ) : (
-                                <span>
-                                  1 {item.baseUnit} = 1 {item.baseUnit}
+                                <span className="text-zinc-300 font-bold">
+                                  -
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-2 text-center border-r border-zinc-100 w-32">
-                              <div className="flex items-center justify-center gap-1">
+                            <td className="py-3 px-2 text-center border-r border-zinc-100 w-48">
+                              {hasOptions && item.countingOptions?.[1] ? (
+                                <div className="flex flex-col items-center gap-1 justify-center">
+                                  <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">
+                                    {item.countingOptions[1].displayName}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    className="w-16 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
+                                    value={counts.countedCartons2}
+                                    onChange={(e) =>
+                                      setItemCounts((prev) => ({
+                                        ...prev,
+                                        [item.id]: {
+                                          ...counts,
+                                          countedCartons2: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                  />
+                                </div>
+                              ) : (
+                                <span className="text-zinc-300 font-bold">
+                                  -
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-2 text-center w-32">
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">
+                                  {item.baseUnit}
+                                </span>
                                 <input
                                   type="number"
                                   min="0"
@@ -771,68 +815,7 @@ export default function StockCountsPage() {
                                     }))
                                   }
                                 />
-                                <span className="text-[10px] text-zinc-400 font-bold">
-                                  {item.baseUnit}
-                                </span>
                               </div>
-                            </td>
-                            <td className="py-3 px-2 text-center border-r border-zinc-100 w-48">
-                              {hasOptions && item.countingOptions?.[0] ? (
-                                <div className="flex items-center gap-1 justify-center">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="0"
-                                    className="w-16 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
-                                    value={counts.countedCartons}
-                                    onChange={(e) =>
-                                      setItemCounts((prev) => ({
-                                        ...prev,
-                                        [item.id]: {
-                                          ...counts,
-                                          countedCartons: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                  />
-                                  <span className="text-[10px] text-zinc-400 font-bold">
-                                    {item.countingOptions[0].displayName}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-zinc-300 font-bold">
-                                  -
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-2 text-center w-48">
-                              {hasOptions && item.countingOptions?.[1] ? (
-                                <div className="flex items-center gap-1 justify-center">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    placeholder="0"
-                                    className="w-16 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-lg py-1.5 px-2 text-center text-xs font-bold focus:outline-none"
-                                    value={counts.countedCartons2}
-                                    onChange={(e) =>
-                                      setItemCounts((prev) => ({
-                                        ...prev,
-                                        [item.id]: {
-                                          ...counts,
-                                          countedCartons2: e.target.value,
-                                        },
-                                      }))
-                                    }
-                                  />
-                                  <span className="text-[10px] text-zinc-400 font-bold">
-                                    {item.countingOptions[1].displayName}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-zinc-300 font-bold">
-                                  -
-                                </span>
-                              )}
                             </td>
                             <td className="py-4 px-6">
                               {isCounted ? (
