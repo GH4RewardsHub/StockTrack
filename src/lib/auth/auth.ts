@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
+import { createAuthMiddleware } from "better-auth/api";
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -34,6 +35,23 @@ export const auth = betterAuth({
       createdAt: "created_at",
       updatedAt: "updated_at",
     },
+    additionalFields: {
+      acceptedTermsVersion: {
+        type: "string",
+        fieldName: "accepted_terms_version",
+        required: false,
+      },
+      acceptedTermsAt: {
+        type: "date",
+        fieldName: "accepted_terms_at",
+        required: false,
+      },
+      ipAddress: {
+        type: "string",
+        fieldName: "ip_address",
+        required: false,
+      },
+    },
   },
   session: {
     modelName: "sessions",
@@ -55,7 +73,6 @@ export const auth = betterAuth({
       accessToken: "access_token",
       refreshToken: "refresh_token",
       idToken: "id_token",
-      expiresAt: "expires_at",
       accessTokenExpiresAt: "access_token_expires_at",
       refreshTokenExpiresAt: "refresh_token_expires_at",
       createdAt: "created_at",
@@ -70,4 +87,36 @@ export const auth = betterAuth({
       updatedAt: "updated_at",
     },
   },
+  plugins: [
+    {
+      id: "terms-acceptance-tracker",
+      hooks: {
+        before: [
+          {
+            matcher: (ctx) => ctx.path === "/sign-up/email",
+            handler: createAuthMiddleware(async (ctx) => {
+              const request = ctx.request;
+              let ip = request?.headers?.get("x-forwarded-for")?.split(",")[0] ||
+                       request?.headers?.get("x-real-ip") ||
+                       "127.0.0.1";
+              
+              if (ip === "::1" || ip === "::ffff:127.0.0.1") {
+                ip = "127.0.0.1";
+              }
+
+              ctx.body = {
+                ...(ctx.body || {}),
+                acceptedTermsVersion: "v1.0",
+                acceptedTermsAt: new Date(),
+                ipAddress: ip,
+              };
+              return {
+                context: ctx,
+              };
+            }),
+          },
+        ],
+      },
+    },
+  ],
 });

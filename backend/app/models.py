@@ -15,6 +15,9 @@ class User(SQLModel, table=True):
     email_verified: bool = Field(default=False)
     image: Optional[str] = Field(default=None)
     role: str = Field(default="admin")
+    accepted_terms_version: Optional[str] = Field(default=None)
+    accepted_terms_at: Optional[datetime] = Field(default=None)
+    ip_address: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
