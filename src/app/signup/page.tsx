@@ -17,6 +17,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agree, setAgree] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -44,6 +45,11 @@ export default function SignupPage() {
     const trimmedFullName = fullName.trim();
     if (!trimmedFullName || !email || !password || !confirmPassword) {
       toast.error("Please fill in all fields.");
+      return;
+    }
+
+    if (!agree) {
+      toast.error("Please agree to the Terms & Conditions and Privacy Policy.");
       return;
     }
 
@@ -209,6 +215,36 @@ export default function SignupPage() {
               </div>
             </div>
 
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-zinc-300 text-[#16A34A] focus:ring-[#16A34A] cursor-pointer"
+                  checked={agree}
+                  onChange={(e) => setAgree(e.target.checked)}
+                  disabled={loading}
+                />
+                <span className="text-xs font-semibold text-zinc-700 leading-tight select-none">
+                  I agree to the{" "}
+                  <Link href="/terms-and-condition" className="text-[#16A34A] hover:underline" target="_blank">
+                    Terms &amp; Conditions
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy-policy" className="text-[#16A34A] hover:underline" target="_blank">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+              
+              <p className="text-[11px] text-zinc-500 leading-normal">
+                By creating an account, you acknowledge that StockTrack is business assistance software and that you have read and accepted our{" "}
+                <Link href="/terms-and-condition" className="text-[#16A34A] hover:underline" target="_blank">
+                  Terms &amp; Conditions
+                </Link>
+                .
+              </p>
+            </div>
+
             <button
               type="submit"
               disabled={
@@ -216,9 +252,10 @@ export default function SignupPage() {
                 !fullName.trim() ||
                 !email.trim() ||
                 !password ||
-                !confirmPassword
+                !confirmPassword ||
+                !agree
               }
-              className={`w-full mt-2 bg-primary-green hover:bg-green-700 active:bg-green-800 text-white rounded-xl py-3 text-sm font-semibold tracking-wide shadow-md shadow-zinc-200 transition-all duration-200 flex items-center justify-center gap-2  disabled:opacity-50 ${loading || !fullName.trim() || !email.trim() || !password || !confirmPassword ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              className={`w-full mt-2 bg-primary-green hover:bg-green-700 active:bg-green-800 text-white rounded-xl py-3 text-sm font-semibold tracking-wide shadow-md shadow-zinc-200 transition-all duration-200 flex items-center justify-center gap-2  disabled:opacity-50 ${loading || !fullName.trim() || !email.trim() || !password || !confirmPassword || !agree ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             >
               {loading ? (
                 <>
