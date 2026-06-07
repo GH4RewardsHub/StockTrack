@@ -40,7 +40,7 @@ def get_refill_suggestions(
     session: Session = Depends(get_session)
 ):
 
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_purchase_orders", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "purchase_orders.read", session)
 
     items = session.exec(select(StockItem).where(
         StockItem.business_id == business_id).where(StockItem.is_active == True)).all()
@@ -118,7 +118,7 @@ def create_purchase_order(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_purchase_orders", location_id=data.location_id, session=session)
+    verify_user_permission(current_user, business_id, "purchase_orders.write", location_id=data.location_id, session=session)
 
     supplier = session.get(Supplier, data.supplier_id)
     if not supplier or supplier.business_id != business_id:
@@ -233,7 +233,7 @@ def get_purchase_order(
         raise HTTPException(status_code=404, detail="Purchase order not found")
 
 
-    verify_user_permission(current_user, business_id, "view_purchase_orders", location_id=po.location_id, session=session)
+    verify_user_permission(current_user, business_id, "purchase_orders.read", location_id=po.location_id, session=session)
 
     items_out = []
     for i in po.items:
@@ -275,11 +275,11 @@ def update_purchase_order(
         raise HTTPException(status_code=404, detail="Purchase order not found")
 
 
-    verify_user_permission(current_user, business_id, "manage_purchase_orders", location_id=po.location_id, session=session)
+    verify_user_permission(current_user, business_id, "purchase_orders.write", location_id=po.location_id, session=session)
     if data.location_id is not None:
         new_loc = None if data.location_id == "" else data.location_id
         if new_loc != po.location_id:
-            verify_user_permission(current_user, business_id, "manage_purchase_orders", location_id=new_loc, session=session)
+            verify_user_permission(current_user, business_id, "purchase_orders.write", location_id=new_loc, session=session)
 
     if data.status is not None:
         if data.status == PurchaseOrderStatus.completed:
@@ -344,7 +344,7 @@ def delete_purchase_order(
         raise HTTPException(status_code=404, detail="Purchase order not found")
 
 
-    verify_user_permission(current_user, business_id, "manage_purchase_orders", location_id=po.location_id, session=session)
+    verify_user_permission(current_user, business_id, "purchase_orders.write", location_id=po.location_id, session=session)
 
     session.delete(po)
     session.commit()

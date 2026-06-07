@@ -38,7 +38,7 @@ def create_delivery(
         raise HTTPException(status_code=404, detail="Purchase order not found")
 
 
-    verify_user_permission(current_user, business_id, "manage_deliveries", location_id=po.location_id, session=session)
+    verify_user_permission(current_user, business_id, "deliveries.write", location_id=po.location_id, session=session)
 
     if po.status != PurchaseOrderStatus.sent:
         raise HTTPException(
@@ -122,7 +122,7 @@ def get_deliveries(
     session: Session = Depends(get_session)
 ):
 
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_deliveries", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "deliveries.read", session)
 
     if allowed_locs is not None:
         statement = (
@@ -167,7 +167,7 @@ def get_delivery(
         raise HTTPException(status_code=404, detail="Delivery not found")
 
 
-    verify_user_permission(current_user, business_id, "view_deliveries", location_id=d.purchase_order.location_id if d.purchase_order else None, session=session)
+    verify_user_permission(current_user, business_id, "deliveries.read", location_id=d.purchase_order.location_id if d.purchase_order else None, session=session)
 
     items_out = []
     for i in d.items:

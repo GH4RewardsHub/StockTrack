@@ -35,9 +35,9 @@ def get_consumption_analysis(
     session: Session = Depends(get_session)
 ):
     if location_id:
-        verify_user_permission(current_user, business_id, "view_sales", location_id=location_id, session=session)
+        verify_user_permission(current_user, business_id, "sales.read", location_id=location_id, session=session)
     else:
-        verify_user_permission(current_user, business_id, "view_sales", session=session)
+        verify_user_permission(current_user, business_id, "sales.read", session=session)
 
     target_dt = datetime.utcnow()
     if start_date:
@@ -85,10 +85,10 @@ def get_consumption_analysis(
 
 
     if location_id:
-        verify_user_permission(current_user, business_id, "view_sales", location_id=location_id, session=session)
+        verify_user_permission(current_user, business_id, "sales.read", location_id=location_id, session=session)
         locations_to_process = [location_id]
     else:
-        allowed_locs = get_allowed_locations(current_user, business_id, "view_sales", session)
+        allowed_locs = get_allowed_locations(current_user, business_id, "sales.read", session)
         if allowed_locs is not None:
             locations_to_process = [l for l in allowed_locs if l is not None]
         else:

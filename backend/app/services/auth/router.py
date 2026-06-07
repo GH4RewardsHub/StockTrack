@@ -103,3 +103,11 @@ def login_user(credentials: UserLogin, session: Session = Depends(get_session)):
         "user": user
     }
 
+
+@router.get("/api/auth/roles-permissions")
+def get_roles_permissions():
+    from app.services.auth.dependencies import permissions_loader
+    # Ensure it's populated
+    permissions_loader.get_role_permissions("admin")
+    return permissions_loader.cached_permissions
+

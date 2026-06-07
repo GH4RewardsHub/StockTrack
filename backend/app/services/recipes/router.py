@@ -66,7 +66,7 @@ def create_business_recipe(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_recipes", session=session)
+    verify_user_permission(current_user, business_id, "recipes.write", session=session)
 
     existing = session.exec(
         select(Recipe).where(
@@ -166,7 +166,7 @@ def get_business_recipes(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "view_recipes", session=session)
+    verify_user_permission(current_user, business_id, "recipes.read", session=session)
 
     recipes = session.exec(select(Recipe).where(
         Recipe.business_id == business_id)).all()
@@ -222,7 +222,7 @@ def update_business_recipe(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_recipes", session=session)
+    verify_user_permission(current_user, business_id, "recipes.write", session=session)
 
     recipe = session.get(Recipe, recipe_id)
     if not recipe or recipe.business_id != business_id:
@@ -332,7 +332,7 @@ def delete_business_recipe(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_recipes", session=session)
+    verify_user_permission(current_user, business_id, "recipes.write", session=session)
 
     recipe = session.get(Recipe, recipe_id)
     if not recipe or recipe.business_id != business_id:

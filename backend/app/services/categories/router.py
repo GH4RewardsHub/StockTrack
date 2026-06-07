@@ -36,7 +36,7 @@ def create_business_category(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     existing = session.exec(
         select(Category).where(
@@ -77,7 +77,7 @@ def get_business_categories(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "view_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.read", session=session)
 
     statement = select(Category).where(Category.business_id == business_id)
     categories = session.exec(statement).all()
@@ -120,7 +120,7 @@ def update_business_category(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     category = session.get(Category, category_id)
     if not category or category.business_id != business_id:
@@ -168,7 +168,7 @@ def delete_business_category(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     category = session.get(Category, category_id)
     if not category or category.business_id != business_id:

@@ -58,7 +58,7 @@ def create_sale(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_sales", location_id=data.location_id, session=session)
+    verify_user_permission(current_user, business_id, "sales.write", location_id=data.location_id, session=session)
 
     if data.location_id:
         loc = session.get(Location, data.location_id)
@@ -157,7 +157,7 @@ def get_sales(
     session: Session = Depends(get_session)
 ):
 
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_sales", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "sales.read", session)
 
     statement = select(Sale).where(Sale.business_id == business_id).order_by(Sale.created_at.desc())
     if allowed_locs is not None:
@@ -208,7 +208,7 @@ def get_sale(
         raise HTTPException(status_code=404, detail="Sale not found")
 
 
-    verify_user_permission(current_user, business_id, "view_sales", location_id=s.location_id, session=session)
+    verify_user_permission(current_user, business_id, "sales.read", location_id=s.location_id, session=session)
 
     items_out = []
     for i in s.items:
@@ -265,7 +265,7 @@ def update_sale(
         raise HTTPException(status_code=404, detail="Sale not found")
 
 
-    verify_user_permission(current_user, business_id, "manage_sales", location_id=sale.location_id, session=session)
+    verify_user_permission(current_user, business_id, "sales.write", location_id=sale.location_id, session=session)
 
     if data.remarks is not None:
         sale.remarks = data.remarks
@@ -316,7 +316,7 @@ def get_sales_imports(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "view_sales", session=session)
+    verify_user_permission(current_user, business_id, "sales.read", session=session)
 
     imports = session.exec(
         select(SalesImport)
@@ -349,7 +349,7 @@ def preview_sales_import(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_sales", session=session)
+    verify_user_permission(current_user, business_id, "sales.write", session=session)
 
     contents = file.file.read()
     file_size_kb = f"{len(contents) / 1024:.1f} KB"
@@ -407,7 +407,7 @@ def confirm_sales_import(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_sales", location_id=data.location_id, session=session)
+    verify_user_permission(current_user, business_id, "sales.write", location_id=data.location_id, session=session)
 
     if data.location_id:
         loc = session.get(Location, data.location_id)

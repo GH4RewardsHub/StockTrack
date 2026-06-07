@@ -90,7 +90,7 @@ def create_business_stock_count(
     - **data**: Details of the stock count session including the target location, count date, counter's name, and initial items.
     """
 
-    verify_user_permission(current_user, business_id, "manage_stock_counts", location_id=data.location_id, session=session)
+    verify_user_permission(current_user, business_id, "stock_counts.write", location_id=data.location_id, session=session)
 
     location_name = None
     if data.location_id:
@@ -235,7 +235,7 @@ def get_business_stock_counts(
     - **business_id**: The unique identifier of the business.
     """
 
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_stock_counts", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "stock_counts.read", session)
 
     statement = select(StockCountSession).where(StockCountSession.business_id == business_id)
     if allowed_locs is not None:
@@ -320,7 +320,7 @@ def get_business_stock_count_detail(
             status_code=404, detail="Stock count session not found")
 
 
-    verify_user_permission(current_user, business_id, "view_stock_counts", location_id=count_sess.location_id, session=session)
+    verify_user_permission(current_user, business_id, "stock_counts.read", location_id=count_sess.location_id, session=session)
 
     location_name = None
     if count_sess.location_id:
@@ -406,9 +406,9 @@ def update_business_stock_count(
             status_code=404, detail="Stock count session not found")
 
 
-    verify_user_permission(current_user, business_id, "manage_stock_counts", location_id=count_sess.location_id, session=session)
+    verify_user_permission(current_user, business_id, "stock_counts.write", location_id=count_sess.location_id, session=session)
     if data.location_id and data.location_id != count_sess.location_id:
-        verify_user_permission(current_user, business_id, "manage_stock_counts", location_id=data.location_id, session=session)
+        verify_user_permission(current_user, business_id, "stock_counts.write", location_id=data.location_id, session=session)
 
     if data.location_id:
         loc = session.get(Location, data.location_id)
@@ -570,7 +570,7 @@ def delete_business_stock_count(
             status_code=404, detail="Stock count session not found")
 
 
-    verify_user_permission(current_user, business_id, "manage_stock_counts", location_id=count_sess.location_id, session=session)
+    verify_user_permission(current_user, business_id, "stock_counts.write", location_id=count_sess.location_id, session=session)
 
     session.delete(count_sess)
     session.commit()

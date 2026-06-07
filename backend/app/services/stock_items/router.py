@@ -98,7 +98,7 @@ def create_business_stock_item(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     existing = session.exec(
         select(StockItem).where(
@@ -275,7 +275,7 @@ def get_business_stock_items(
     session: Session = Depends(get_session)
 ):
 
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_stock_items", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "stock_items.read", session)
 
     items = session.exec(select(StockItem).where(
         StockItem.business_id == business_id)).all()
@@ -362,7 +362,7 @@ def get_location_stock_items(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "view_stock_items", location_id=location_id, session=session)
+    verify_user_permission(current_user, business_id, "stock_items.read", location_id=location_id, session=session)
 
     location = session.get(Location, location_id)
     if not location or location.business_id != business_id:
@@ -453,7 +453,7 @@ def update_business_stock_item(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     stock_item = session.get(StockItem, item_id)
     if not stock_item or stock_item.business_id != business_id:
@@ -638,7 +638,7 @@ def delete_business_stock_item(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     stock_item = session.get(StockItem, item_id)
     if not stock_item or stock_item.business_id != business_id:

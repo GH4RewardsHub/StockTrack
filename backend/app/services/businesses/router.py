@@ -137,7 +137,7 @@ def get_business(
             detail="Business not found"
         )
     
-    verify_user_permission(current_user, business_id, "view_business", session=session)
+    verify_user_permission(current_user, business_id, "business.read", session=session)
     
     return business
 

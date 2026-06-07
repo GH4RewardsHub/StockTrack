@@ -209,7 +209,7 @@ def run_business_reconciliation(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    verify_user_permission(current_user, business_id, "manage_reconciliation", location_id=data.location_id, session=session)
+    verify_user_permission(current_user, business_id, "reconciliation.write", location_id=data.location_id, session=session)
 
     calc = perform_reconciliation_calculation(
         business_id=business_id,
@@ -307,7 +307,7 @@ def get_reconciliation_preview(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    verify_user_permission(current_user, business_id, "view_reconciliation", location_id=location_id, session=session)
+    verify_user_permission(current_user, business_id, "reconciliation.read", location_id=location_id, session=session)
 
     target_date = date or datetime.utcnow().strftime("%Y-%m-%d")
 
@@ -348,7 +348,7 @@ def get_business_reconciliations(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_reconciliation", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "reconciliation.read", session)
 
     statement = select(Reconciliation).where(Reconciliation.business_id == business_id).order_by(Reconciliation.created_at.desc())
     if allowed_locs is not None:
@@ -399,7 +399,7 @@ def get_business_reconciliation_detail(
     if not rec or rec.business_id != business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reconciliation not found")
 
-    verify_user_permission(current_user, business_id, "view_reconciliation", location_id=rec.location_id, session=session)
+    verify_user_permission(current_user, business_id, "reconciliation.read", location_id=rec.location_id, session=session)
 
     location_name = None
     if rec.location_id:
@@ -460,7 +460,7 @@ def delete_business_reconciliation(
     if not rec or rec.business_id != business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reconciliation not found")
 
-    verify_user_permission(current_user, business_id, "manage_reconciliation", location_id=rec.location_id, session=session)
+    verify_user_permission(current_user, business_id, "reconciliation.write", location_id=rec.location_id, session=session)
 
     session.delete(rec)
     session.commit()

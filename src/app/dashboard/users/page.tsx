@@ -9,6 +9,7 @@ import {
   getUserAssignments,
   updateUserAssignment,
   deleteUserAssignment,
+  getRolesPermissions,
 } from "@/lib/repositories/user.repository";
 import {
   Search,
@@ -47,21 +48,37 @@ interface UserAssignmentOut {
 }
 
 const AVAILABLE_PERMISSIONS = [
-  { value: "view_business", label: "View Business" },
-  { value: "view_recipes", label: "View Recipes" },
-  { value: "manage_recipes", label: "Manage Recipes" },
-  { value: "view_stock_items", label: "View Stock Items" },
-  { value: "manage_stock_items", label: "Manage Stock Items" },
-  { value: "view_purchase_orders", label: "View Purchase Orders" },
-  { value: "manage_purchase_orders", label: "Manage Purchase Orders" },
-  { value: "view_deliveries", label: "View Deliveries" },
-  { value: "manage_deliveries", label: "Manage Deliveries" },
-  { value: "view_sales", label: "View Sales" },
-  { value: "manage_sales", label: "Manage Sales" },
-  { value: "view_consumption", label: "View Consumption" },
-  { value: "manage_consumption", label: "Manage Consumption" },
-  { value: "view_reconciliation", label: "View Reconciliation" },
-  { value: "manage_reconciliation", label: "Manage Reconciliation" },
+  { value: "business.read", label: "View Business" },
+  { value: "locations.read", label: "View Locations" },
+  { value: "locations.write", label: "Manage Locations" },
+  { value: "stock_items.read", label: "View Stock Items" },
+  { value: "stock_items.write", label: "Manage Stock Items" },
+  { value: "stock_counts.read", label: "View Stock Counts" },
+  { value: "stock_counts.write", label: "Manage Stock Counts" },
+  { value: "recipes.read", label: "View Recipes" },
+  { value: "recipes.write", label: "Manage Recipes" },
+  { value: "consumption.read", label: "View Recipe Consumption" },
+  { value: "consumption.write", label: "Manage Recipe Consumption" },
+  { value: "purchase_orders.read", label: "View Purchase Orders" },
+  { value: "purchase_orders.write", label: "Manage Purchase Orders" },
+  { value: "deliveries.read", label: "View Deliveries" },
+  { value: "deliveries.write", label: "Manage Deliveries" },
+  { value: "sales.read", label: "View Sales" },
+  { value: "sales.write", label: "Manage Sales" },
+  { value: "reconciliation.read", label: "View Reconciliation" },
+  { value: "reconciliation.write", label: "Manage Reconciliation" },
+  { value: "attendance.read", label: "View Attendance" },
+  { value: "attendance.read_own", label: "View Own Attendance" },
+  { value: "attendance.write", label: "Manage Attendance" },
+  { value: "rosters.read", label: "View Rosters" },
+  { value: "rosters.read_own", label: "View Own Roster" },
+  { value: "rosters.write", label: "Manage Rosters" },
+  { value: "dashboard.read", label: "View Dashboard" },
+  { value: "data.export", label: "Export Data" },
+  { value: "reports.read", label: "View Reports" },
+  { value: "audit_logs.read", label: "View Audit Logs" },
+  { value: "settings.write", label: "Manage Settings" },
+  { value: "support.write", label: "Manage Support" },
 ];
 
 export default function UsersPage() {
@@ -95,6 +112,7 @@ export default function UsersPage() {
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [rolesPermissions, setRolesPermissions] = useState<Record<string, string[]>>({});
 
   const loadData = async () => {
     if (!activeBusinessId) return;
@@ -107,6 +125,13 @@ export default function UsersPage() {
       setBusinesses(bizList);
       const currentBiz = bizList.find((b) => b.id === activeBusinessId) || null;
       setActiveBusiness(currentBiz);
+
+      try {
+        const permsMap = await getRolesPermissions();
+        setRolesPermissions(permsMap);
+      } catch (err) {
+        console.error("Failed to load roles-permissions defaults", err);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load users list.");
@@ -673,6 +698,7 @@ export default function UsersPage() {
                   className="w-full bg-white border border-zinc-200 focus:border-[#16A34A] rounded-xl py-2 px-3 text-xs text-zinc-950 focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer font-bold"
                 >
                   <option value="all">All Roles</option>
+                  <option value="super_admin">Super Admin</option>
                   <option value="admin">Admin</option>
                   <option value="manager">Manager</option>
                   <option value="staff">Staff</option>
@@ -880,6 +906,7 @@ export default function UsersPage() {
                       onChange={(e) => setFormRole(e.target.value)}
                       className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-zinc-950 focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer font-bold"
                     >
+                      <option value="super_admin">Super Admin (Full Access)</option>
                       <option value="admin">Admin (Full Access)</option>
                       <option value="manager">Manager</option>
                       <option value="staff">Staff</option>
@@ -921,7 +948,7 @@ export default function UsersPage() {
                     htmlFor="formActive"
                     className="text-xs font-bold text-[#0F172A] cursor-pointer"
                   >
-                    Assignment is active
+                    User is active
                   </label>
                 </div>
 
@@ -931,7 +958,12 @@ export default function UsersPage() {
                   </label>
                   <div className="max-h-60 overflow-y-auto space-y-2.5 pr-2">
                     {AVAILABLE_PERMISSIONS.map((perm) => {
-                      const isChecked = formPermissions.includes(perm.value);
+                      const defaultPerms = rolesPermissions[formRole] || [];
+                      const isDefaultGranted =
+                        defaultPerms.includes("*") ||
+                        defaultPerms.includes(perm.value);
+                      const isChecked =
+                        isDefaultGranted || formPermissions.includes(perm.value);
                       return (
                         <div
                           key={perm.value}
@@ -940,15 +972,23 @@ export default function UsersPage() {
                           <input
                             type="checkbox"
                             id={`perm-${perm.value}`}
-                            className="h-4 w-4 mt-0.5 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded cursor-pointer"
+                            className="h-4 w-4 mt-0.5 text-[#16A34A] focus:ring-[#16A34A] border-zinc-300 rounded cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             checked={isChecked}
+                            disabled={isDefaultGranted}
                             onChange={() => handleTogglePermission(perm.value)}
                           />
                           <label
                             htmlFor={`perm-${perm.value}`}
-                            className="text-xs font-semibold text-zinc-700 cursor-pointer select-none"
+                            className={`text-xs font-semibold cursor-pointer select-none ${
+                              isDefaultGranted ? "text-zinc-400 font-medium" : "text-zinc-700"
+                            }`}
                           >
                             {perm.label}
+                            {isDefaultGranted && (
+                              <span className="text-[10px] text-[#16A34A] font-bold ml-1.5 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-100/60 inline-flex items-center">
+                                (Role Default)
+                              </span>
+                            )}
                           </label>
                         </div>
                       );

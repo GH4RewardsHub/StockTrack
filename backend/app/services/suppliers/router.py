@@ -34,7 +34,7 @@ def create_business_supplier(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     supplier = Supplier(
         name=data.name,
@@ -66,7 +66,7 @@ def get_business_suppliers(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "view_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.read", session=session)
 
     statement = select(Supplier).where(Supplier.business_id == business_id)
     return session.exec(statement).all()
@@ -81,7 +81,7 @@ def update_business_supplier(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     supplier = session.get(Supplier, supplier_id)
     if not supplier or supplier.business_id != business_id:
@@ -116,7 +116,7 @@ def delete_business_supplier(
     session: Session = Depends(get_session)
 ):
 
-    verify_user_permission(current_user, business_id, "manage_stock_items", session=session)
+    verify_user_permission(current_user, business_id, "stock_items.write", session=session)
 
     supplier = session.get(Supplier, supplier_id)
     if not supplier or supplier.business_id != business_id:

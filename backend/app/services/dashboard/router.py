@@ -14,10 +14,10 @@ def get_dashboard_metrics(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    verify_user_permission(current_user, business_id, "view_business", session=session)
+    verify_user_permission(current_user, business_id, "business.read", session=session)
 
     business = session.get(Business, business_id)
-    allowed_locs = get_allowed_locations(current_user, business_id, "view_stock_items", session)
+    allowed_locs = get_allowed_locations(current_user, business_id, "stock_items.read", session)
     active_items = [item for item in business.stock_items if item.is_active]
 
     low_stock = []

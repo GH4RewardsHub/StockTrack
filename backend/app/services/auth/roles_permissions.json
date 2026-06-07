@@ -1,0 +1,59 @@
+{
+  "super_admin": [
+    "*"
+  ],
+  "admin": [
+    "*"
+  ],
+  "manager": [
+    "business.read",
+    "locations.write",
+    "locations.read",
+    "stock_items.write",
+    "stock_items.read",
+    "stock_counts.write",
+    "stock_counts.read",
+    "recipes.write",
+    "recipes.read",
+    "purchase_orders.write",
+    "purchase_orders.read",
+    "deliveries.write",
+    "deliveries.read",
+    "sales.write",
+    "sales.read",
+    "reconciliation.write",
+    "reconciliation.read",
+    "consumption.read",
+    "consumption.write",
+    "attendance.read",
+    "attendance.read_own",
+    "attendance.write",
+    "rosters.write",
+    "rosters.read",
+    "rosters.read_own",
+    "dashboard.read",
+    "data.export",
+    "reports.read",
+    "audit_logs.read",
+    "settings.write",
+    "support.write"
+  ],
+  "staff": [
+    "business.read",
+    "locations.read",
+    "stock_items.read",
+    "stock_counts.write",
+    "stock_counts.read",
+    "recipes.read",
+    "deliveries.write",
+    "deliveries.read",
+    "sales.write",
+    "sales.read",
+    "consumption.read",
+    "attendance.read_own",
+    "rosters.read_own",
+    "dashboard.read",
+    "reports.read",
+    "support.write"
+  ]
+}

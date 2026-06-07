@@ -1,4 +1,7 @@
 from datetime import datetime
+import os
+import json
+import time
 from typing import Optional, List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -9,6 +12,37 @@ from app.models import User, SessionTable, Business, UserAssignment
 from app.services.auth.utils import decode_access_token
 
 security = HTTPBearer(auto_error=False)
+
+
+class PermissionsLoader:
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self.cached_permissions = {}
+        self.last_loaded = 0.0
+        self.last_mtime = 0.0
+
+    def get_role_permissions(self, role: str) -> list:
+        try:
+            if os.path.exists(self.filepath):
+                mtime = os.path.getmtime(self.filepath)
+                if mtime > self.last_mtime:
+                    with open(self.filepath, "r") as f:
+                        self.cached_permissions = json.load(f)
+                    self.last_mtime = mtime
+                    self.last_loaded = time.time()
+        except Exception as e:
+            # Fallback to cache and print warning
+            print(f"Error loading roles_permissions.json: {e}")
+        
+        if not self.cached_permissions:
+            return []
+        
+        return self.cached_permissions.get(role, [])
+
+
+# Initialize the loader
+PERMISSIONS_FILE = os.path.join(os.path.dirname(__file__), "roles_permissions.json")
+permissions_loader = PermissionsLoader(PERMISSIONS_FILE)
 
 
 def get_current_user(
@@ -86,11 +120,17 @@ def verify_user_permission(
         )
 
     for assignment in assignments:
-        if assignment.role in ("super_admin", "admin"):
-            if assignment.location_id is None or assignment.location_id == location_id:
-                return
-
-        if permission == "view_business" or permission in assignment.permissions or "admin" in assignment.permissions:
+        role_perms = permissions_loader.get_role_permissions(assignment.role)
+        has_perm = (
+            assignment.role in ("super_admin", "admin") or
+            "*" in role_perms or
+            "admin" in role_perms or
+            permission in role_perms or
+            permission in assignment.permissions or
+            "admin" in assignment.permissions or
+            permission == "view_business"
+        )
+        if has_perm:
             if location_id is None or assignment.location_id is None or assignment.location_id == location_id:
                 return
 
@@ -138,16 +178,21 @@ def get_allowed_locations(
 
     allowed_locs = []
     for ass in assignments:
-        if ass.role in ("super_admin", "admin"):
-            if ass.location_id is None:
-                return None
-            else:
-                allowed_locs.append(ass.location_id)
-        elif permission in ass.permissions or "admin" in ass.permissions:
+        role_perms = permissions_loader.get_role_permissions(ass.role)
+        has_perm = (
+            ass.role in ("super_admin", "admin") or
+            "*" in role_perms or
+            "admin" in role_perms or
+            permission in role_perms or
+            permission in ass.permissions or
+            "admin" in ass.permissions
+        )
+        if has_perm:
             if ass.location_id is None:
                 return None
             else:
                 allowed_locs.append(ass.location_id)
 
     return allowed_locs
+
 

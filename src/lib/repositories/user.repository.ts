@@ -74,3 +74,8 @@ export const deleteUserAssignment = async (businessId: string, assignmentId: str
   const response = await api.delete(`/api/businesses/${businessId}/users/${assignmentId}`);
   return response.data;
 };
+
+export const getRolesPermissions = async () => {
+  const response = await api.get("/api/auth/roles-permissions");
+  return response.data;
+};
