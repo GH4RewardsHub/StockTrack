@@ -27,10 +27,6 @@ import {
   Package,
   Calendar,
   Download,
-  Filter,
-  DollarSign,
-  Boxes,
-  Percent,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -562,8 +558,10 @@ export default function ConsumptionPage() {
                 <tr className="border-b border-zinc-200 text-[10px] uppercase font-extrabold tracking-wider text-[#64748B] bg-zinc-50/50">
                   <th className="py-4 px-6 font-extrabold">#</th>
                   <th className="py-4 px-6 font-extrabold">Stock Item</th>
-                  <th className="py-4 px-6 font-extrabold">Category</th>
                   <th className="py-4 px-6 font-extrabold">Base Unit</th>
+                  <th className="py-4 px-6 font-extrabold">Opening Stock</th>
+                  <th className="py-4 px-6 font-extrabold">Delivery</th>
+                  <th className="py-4 px-6 font-extrabold">Today's Stock (Closing)</th>
                   <th className="py-4 px-6 font-extrabold">
                     Consumed (Base Units)
                   </th>
@@ -575,7 +573,7 @@ export default function ConsumptionPage() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="py-12 text-center text-zinc-400 font-semibold"
                     >
                       <Loader2 className="h-5 w-5 text-[#16A34A] animate-spin inline mr-2" />
@@ -585,7 +583,7 @@ export default function ConsumptionPage() {
                 ) : paginatedItems.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="py-12 text-center text-zinc-400 font-semibold"
                     >
                       No stock consumption tracked for the selected range.
@@ -628,11 +626,23 @@ export default function ConsumptionPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 font-bold text-zinc-500">
-                          {item.category}
-                        </td>
                         <td className="py-4 px-6 font-bold text-zinc-700">
                           {item.base_unit}
+                        </td>
+                        <td className="py-4 px-6 font-semibold text-zinc-700">
+                          {item.opening_stock.toLocaleString(undefined, {
+                            maximumFractionDigits: 1,
+                          })}
+                        </td>
+                        <td className="py-4 px-6 font-semibold text-zinc-700">
+                          {item.deliveries.toLocaleString(undefined, {
+                            maximumFractionDigits: 1,
+                          })}
+                        </td>
+                        <td className="py-4 px-6 font-semibold text-zinc-700">
+                          {item.closing_stock.toLocaleString(undefined, {
+                            maximumFractionDigits: 1,
+                          })}
                         </td>
                         <td className="py-4 px-6 font-extrabold text-zinc-800">
                           {item.consumed_qty.toLocaleString(undefined, {
