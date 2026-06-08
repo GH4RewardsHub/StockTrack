@@ -101,6 +101,16 @@ export default function LocationsPage() {
     setActiveMenuId(null);
   };
 
+  const hasLocationChanges = (loc: Location) => {
+    return (
+      formName.trim() !== loc.name ||
+      formDescription.trim() !== (loc.description || "") ||
+      formType !== loc.type ||
+      formAddress.trim() !== (loc.address || "") ||
+      formActive !== (loc.isActive !== false)
+    );
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = formName.trim();
@@ -144,6 +154,13 @@ export default function LocationsPage() {
       };
 
       if (editId) {
+        const currentLocation = locations.find((loc) => loc.id === editId);
+        if (currentLocation && !hasLocationChanges(currentLocation)) {
+          toast.info("No changes to save.");
+          setShowDrawer(false);
+          return;
+        }
+
         await updateLocation(activeBusinessId, editId, locationData);
         toast.success("Location updated successfully!");
       } else {
