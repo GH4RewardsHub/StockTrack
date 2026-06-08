@@ -259,6 +259,14 @@ export default function DashboardLayout({
         return { title: "Reconciliation" };
       case "/dashboard/users":
         return { title: "Users" };
+      case "/dashboard/staff-dashboard":
+        return { title: "Staff Dashboard" };
+      case "/dashboard/staff-directory":
+        return { title: "Staff Directory" };
+      case "/dashboard/timesheet-entry":
+        return { title: "Timesheet Entry" };
+      case "/dashboard/timesheet-review":
+        return { title: "Timesheet Review" };
       default:
         return { title: "Dashboard" };
     }
@@ -325,6 +333,29 @@ export default function DashboardLayout({
   const adminLinks: SidebarLink[] = [
     { name: "Users", href: "/dashboard/users", icon: Users },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  ];
+
+  const staffOperationsLinks: SidebarLink[] = [
+    {
+      name: "Staff Dashboard",
+      href: "/dashboard/staff-dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Staff Directory",
+      href: "/dashboard/staff-directory",
+      icon: Users,
+    },
+    {
+      name: "Timesheet Entry",
+      href: "/dashboard/timesheet-entry",
+      icon: FilePlusCorner,
+    },
+    {
+      name: "Timesheet Review",
+      href: "/dashboard/timesheet-review",
+      icon: FileText,
+    },
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -501,6 +532,12 @@ export default function DashboardLayout({
             sidebarCollapsed,
           )}
           {renderGroup(
+            "Staff Operations",
+            staffOperationsLinks,
+            undefined,
+            sidebarCollapsed,
+          )}
+          {renderGroup(
             "Sales & Usage",
             salesLinks,
             undefined,
@@ -558,6 +595,7 @@ export default function DashboardLayout({
               {renderGroup("Overview", overviewLinks)}
               {renderGroup("Inventory Setup", masterDataLinks)}
               {renderGroup("Stock Operations", operationsLinks)}
+              {renderGroup("Staff Operations", staffOperationsLinks)}
               {renderGroup("Sales & Usage", salesLinks)}
               {renderGroup("Analysis", analysisLinks)}
               {renderGroup("Admin", adminLinks, {
