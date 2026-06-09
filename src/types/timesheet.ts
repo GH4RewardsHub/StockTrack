@@ -11,6 +11,7 @@ export interface Timesheet {
   unpaidBreak: number;
   notes?: string;
   totalHours: number;
+  status: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -23,4 +24,5 @@ export interface TimesheetCreateInput {
   endTime: string;
   unpaidBreak: number;
   notes?: string;
+  status?: string;
 }

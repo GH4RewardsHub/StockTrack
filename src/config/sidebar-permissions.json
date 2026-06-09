@@ -29,7 +29,6 @@
     "/dashboard/locations",
     "/dashboard/counts",
     "/dashboard/staff-dashboard",
-    "/dashboard/timesheet-entry",
-    "/dashboard/timesheet-review"
+    "/dashboard/timesheet-entry"
   ]
 }

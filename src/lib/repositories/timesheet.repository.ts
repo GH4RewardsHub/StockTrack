@@ -14,6 +14,7 @@ interface BackendTimesheet {
   unpaid_break: number;
   notes?: string;
   total_hours: number;
+  status: string;
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ const mapFromBackend = (t: BackendTimesheet): Timesheet => ({
   unpaidBreak: t.unpaid_break,
   notes: t.notes,
   totalHours: t.total_hours,
+  status: t.status,
   createdAt: t.created_at,
 });
 
@@ -50,6 +52,7 @@ export const createTimesheet = async (
     end_time: data.endTime,
     unpaid_break: data.unpaidBreak,
     notes: data.notes,
+    status: data.status,
   });
   return mapFromBackend(response.data);
 };
@@ -69,7 +72,20 @@ export const updateTimesheet = async (
       end_time: data.endTime,
       unpaid_break: data.unpaidBreak,
       notes: data.notes,
+      status: data.status,
     }
+  );
+  return mapFromBackend(response.data);
+};
+
+export const updateTimesheetStatus = async (
+  businessId: string,
+  timesheetId: string,
+  status: string
+): Promise<Timesheet> => {
+  const response = await api.patch(
+    `/api/businesses/${businessId}/timesheets/${timesheetId}/status`,
+    { status }
   );
   return mapFromBackend(response.data);
 };
