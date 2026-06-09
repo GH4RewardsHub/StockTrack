@@ -1,10 +1,10 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select, SQLModel
+from sqlmodel import Session, select, SQLModel, or_
 
 from app.database import get_session
-from app.models import User, Business, Location, UserAssignment
+from app.models import User, Business, Location, UserAssignment, StaffInvitation
 from app.services.auth.dependencies import get_current_user, verify_user_permission
 
 router = APIRouter(tags=["Staff"])
@@ -142,7 +142,13 @@ def get_staff_members(
     verify_user_permission(current_user, business_id, "staff.read", session=session)
 
     assignments = session.exec(
-        select(UserAssignment).where(UserAssignment.business_id == business_id)
+        select(UserAssignment).where(
+            UserAssignment.business_id == business_id,
+            or_(
+                UserAssignment.status != "pending_approval",
+                UserAssignment.status.is_(None)
+            )
+        )
     ).all()
 
     by_user = {}
@@ -315,3 +321,306 @@ def delete_staff(
     session.commit()
 
     return {"message": "Staff assignments deleted successfully"}
+
+
+# Staff Invitation Flow
+
+class StaffInvitationCreate(SQLModel):
+    role: str
+    expires_in_hours: int = 48  # default 48, max 720 (30 days)
+    assignments: List[dict]  # list of {"business_id": "...", "location_ids": ["...", ...]}
+
+
+class StaffInvitationOut(SQLModel):
+    id: str
+    role: str
+    assignments_json: List[dict]
+    expires_at: datetime
+    created_at: datetime
+    status: str
+
+
+class StaffInvitationPublicOut(SQLModel):
+    id: str
+    role: str
+    expires_at: datetime
+    status: str
+    businesses: List[dict]  # list of {"id": "...", "name": "...", "locations": [{"id": "...", "name": "..."}]}
+
+
+class StaffInvitationRegister(SQLModel):
+    name: str
+    phone: str
+
+
+class PendingStaffAssignmentOut(SQLModel):
+    id: str
+    user_id: str
+    user_name: Optional[str]
+    user_email: str
+    user_phone: Optional[str]
+    business_id: str
+    business_name: str
+    location_id: Optional[str]
+    location_name: Optional[str]
+    role: str
+    status: str
+    created_at: datetime
+
+
+@router.post("/api/staff/invitations", response_model=StaffInvitationOut, status_code=status.HTTP_201_CREATED)
+def create_staff_invitation(
+    data: StaffInvitationCreate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    for ass in data.assignments:
+        biz_id = ass.get("business_id")
+        if not biz_id:
+            raise HTTPException(status_code=400, detail="Missing business_id in assignment")
+        verify_user_permission(current_user, biz_id, "staff.write", session=session)
+
+    hours = max(1, min(data.expires_in_hours, 720))
+    expires_at = datetime.utcnow() + timedelta(hours=hours)
+
+    invite = StaffInvitation(
+        created_by_id=current_user.id,
+        role=data.role,
+        assignments_json=data.assignments,
+        expires_at=expires_at,
+        status="pending"
+    )
+    session.add(invite)
+    session.commit()
+    session.refresh(invite)
+    return invite
+
+
+@router.get("/api/staff/invitations/{invitation_id}", response_model=StaffInvitationPublicOut)
+def get_staff_invitation(
+    invitation_id: str,
+    session: Session = Depends(get_session)
+):
+    invite = session.get(StaffInvitation, invitation_id)
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    if invite.status == "pending" and invite.expires_at < datetime.utcnow():
+        invite.status = "expired"
+        session.add(invite)
+        session.commit()
+        session.refresh(invite)
+
+    businesses_out = []
+    for ass in invite.assignments_json:
+        biz_id = ass.get("business_id")
+        loc_ids = ass.get("location_ids", [])
+        business = session.get(Business, biz_id)
+        if not business:
+            continue
+        
+        locs = []
+        if loc_ids:
+            for l_id in loc_ids:
+                loc = session.get(Location, l_id)
+                if loc and loc.business_id == biz_id:
+                    locs.append({"id": loc.id, "name": loc.name})
+        else:
+            all_locs = session.exec(select(Location).where(Location.business_id == biz_id)).all()
+            locs = [{"id": l.id, "name": l.name} for l in all_locs]
+
+        businesses_out.append({
+            "id": business.id,
+            "name": business.name,
+            "locations": locs
+        })
+
+    return StaffInvitationPublicOut(
+        id=invite.id,
+        role=invite.role,
+        expires_at=invite.expires_at,
+        status=invite.status,
+        businesses=businesses_out
+    )
+
+
+@router.post("/api/staff/invitations/{invitation_id}/register")
+def register_staff_invitation(
+    invitation_id: str,
+    data: StaffInvitationRegister,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    invite = session.get(StaffInvitation, invitation_id)
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    if invite.status == "expired" or invite.expires_at < datetime.utcnow():
+        invite.status = "expired"
+        session.add(invite)
+        session.commit()
+        raise HTTPException(status_code=400, detail="Invitation link has expired")
+
+    if invite.status == "completed":
+        raise HTTPException(status_code=400, detail="Invitation has already been used")
+
+    current_user.name = data.name.strip()
+    current_user.phone = data.phone.strip()
+    current_user.role = invite.role
+    session.add(current_user)
+
+    for ass in invite.assignments_json:
+        biz_id = ass.get("business_id")
+        loc_ids = ass.get("location_ids", [])
+
+        existing_assignments = session.exec(
+            select(UserAssignment).where(
+                UserAssignment.user_id == current_user.id,
+                UserAssignment.business_id == biz_id
+            )
+        ).all()
+        for old_ass in existing_assignments:
+            session.delete(old_ass)
+
+        if loc_ids:
+            for loc_id in loc_ids:
+                new_ass = UserAssignment(
+                    user_id=current_user.id,
+                    business_id=biz_id,
+                    location_id=loc_id,
+                    role=invite.role,
+                    is_active=False,
+                    status="pending_approval"
+                )
+                session.add(new_ass)
+        else:
+            new_ass = UserAssignment(
+                user_id=current_user.id,
+                business_id=biz_id,
+                location_id=None,
+                role=invite.role,
+                is_active=False,
+                status="pending_approval"
+            )
+            session.add(new_ass)
+
+    invite.status = "waiting_approval"
+    invite.registered_user_id = current_user.id
+    session.add(invite)
+    session.commit()
+
+    return {"message": "Profile submitted and assignments are pending approval."}
+
+
+@router.get("/api/businesses/{business_id}/pending-staff", response_model=List[PendingStaffAssignmentOut])
+def get_pending_staff(
+    business_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    verify_user_permission(current_user, business_id, "staff.write", session=session)
+
+    assignments = session.exec(
+        select(UserAssignment).where(
+            UserAssignment.business_id == business_id,
+            UserAssignment.status == "pending_approval"
+        )
+    ).all()
+
+    out = []
+    for ass in assignments:
+        if not ass.user:
+            continue
+        location_name = ass.location.name if ass.location else "All Locations"
+        business_name = ass.business.name if ass.business else "Business"
+        out.append(PendingStaffAssignmentOut(
+            id=ass.id,
+            user_id=ass.user_id,
+            user_name=ass.user.name,
+            user_email=ass.user.email,
+            user_phone=ass.user.phone,
+            business_id=ass.business_id,
+            business_name=business_name,
+            location_id=ass.location_id,
+            location_name=location_name,
+            role=ass.role,
+            status=ass.status,
+            created_at=ass.created_at
+        ))
+
+    return out
+
+
+@router.post("/api/businesses/{business_id}/pending-staff/{assignment_id}/approve")
+def approve_pending_staff(
+    business_id: str,
+    assignment_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    verify_user_permission(current_user, business_id, "staff.write", session=session)
+
+    assignment = session.get(UserAssignment, assignment_id)
+    if not assignment or assignment.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Pending assignment not found")
+
+    if assignment.status != "pending_approval":
+        raise HTTPException(status_code=400, detail="Assignment is not pending approval")
+
+    assignment.is_active = True
+    assignment.status = "active"
+    session.add(assignment)
+
+    if assignment.user and assignment.user.role == "admin":
+        assignment.user.role = assignment.role
+        session.add(assignment.user)
+
+    invite = session.exec(
+        select(StaffInvitation).where(
+            StaffInvitation.registered_user_id == assignment.user_id,
+            StaffInvitation.status == "waiting_approval"
+        )
+    ).first()
+    if invite:
+        pending_left = session.exec(
+            select(UserAssignment).where(
+                UserAssignment.user_id == assignment.user_id,
+                UserAssignment.status == "pending_approval"
+            )
+        ).all()
+        if len(pending_left) <= 1:
+            invite.status = "completed"
+            session.add(invite)
+
+    session.commit()
+    return {"message": "Staff assignment approved and activated."}
+
+
+@router.post("/api/businesses/{business_id}/pending-staff/{assignment_id}/reject")
+def reject_pending_staff(
+    business_id: str,
+    assignment_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    verify_user_permission(current_user, business_id, "staff.write", session=session)
+
+    assignment = session.get(UserAssignment, assignment_id)
+    if not assignment or assignment.business_id != business_id:
+        raise HTTPException(status_code=404, detail="Pending assignment not found")
+
+    session.delete(assignment)
+
+    invite = session.exec(
+        select(StaffInvitation).where(
+            StaffInvitation.registered_user_id == assignment.user_id,
+            StaffInvitation.status == "waiting_approval"
+        )
+    ).first()
+    if invite:
+        invite.status = "completed"
+        session.add(invite)
+
+    session.commit()
+    return {"message": "Staff assignment rejected and removed."}
+

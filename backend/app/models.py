@@ -38,12 +38,27 @@ class UserAssignment(SQLModel, table=True):
     role: str = Field(default="staff")  # manager or staff (or admin)
     permissions: List[str] = Field(default=[], sa_column=Column(JSON))
     is_active: bool = Field(default=True)
+    status: str = Field(default="active")  # active, inactive, pending_approval
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
     user: Optional[User] = Relationship()
     business: Optional["Business"] = Relationship()
     location: Optional["Location"] = Relationship()
+
+
+class StaffInvitation(SQLModel, table=True):
+    __tablename__ = "staff_invitations"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    created_by_id: str = Field(foreign_key="users.id", ondelete="CASCADE")
+    role: str = Field(default="staff")  # Default role for assignments
+    assignments_json: List[dict] = Field(default=[], sa_column=Column(JSON))
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="pending")  # pending, waiting_approval, completed, expired
+    registered_user_id: Optional[str] = Field(default=None, foreign_key="users.id", ondelete="SET NULL")
+
 
 
 class SessionTable(SQLModel, table=True):
