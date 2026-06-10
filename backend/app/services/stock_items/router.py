@@ -5,7 +5,7 @@ from sqlmodel import Session, select, SQLModel, func
 
 from app.database import get_session
 from app.models import (
-    User, Business, Category, Location, Supplier, StockItem,
+    User, Category, Location, Supplier, StockItem,
     StockItemLocation, CountingOption
 )
 from app.services.auth.dependencies import get_current_user, verify_user_permission, get_allowed_locations

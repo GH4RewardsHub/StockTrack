@@ -21,7 +21,8 @@
     "/dashboard/staff-dashboard",
     "/dashboard/staff-directory",
     "/dashboard/timesheet-entry",
-    "/dashboard/timesheet-review"
+    "/dashboard/timesheet-review",
+    "/dashboard/timesheet-reports"
   ],
   "staff": [
     "/dashboard",

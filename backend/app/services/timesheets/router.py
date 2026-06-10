@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import List, Optional
-from sqlmodel import Session, select, SQLModel
+from sqlmodel import Session, select, SQLModel, or_
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.database import get_session
-from app.models import User, Location, UserAssignment, Timesheet
+from app.models import User, Location, UserAssignment, Timesheet, Business
 from app.services.auth.dependencies import get_current_user, verify_user_permission
 
 router = APIRouter(tags=["Timesheets"])
@@ -33,6 +33,24 @@ class TimesheetOut(SQLModel):
     end_time: str
     unpaid_break: int
     notes: Optional[str]
+    total_hours: float
+    status: str
+    created_at: datetime
+
+
+class TimesheetReportOut(SQLModel):
+    id: str
+    business_id: str
+    business_name: str
+    location_id: str
+    location_name: str
+    staff_id: str
+    staff_name: str
+    work_date: str
+    start_time: str
+    end_time: str
+    unpaid_break: int
+    notes: Optional[str] = None
     total_hours: float
     status: str
     created_at: datetime
@@ -88,6 +106,14 @@ def check_is_staff(user: User, business_id: str, session: Session) -> bool:
     "/api/businesses/{business_id}/timesheets",
     response_model=TimesheetOut,
     status_code=status.HTTP_201_CREATED,
+    summary="Create a new timesheet",
+    description="Creates a new timesheet entry.",
+    responses={
+        201: {"description": "Timesheet created successfully."},
+        400: {"description": "Invalid request data."},
+        401: {"description": "Missing or invalid authorization credentials."},
+        403: {"description": "Not authorized to create timesheet."},
+    },
 )
 def create_timesheet(
     business_id: str,
@@ -156,7 +182,16 @@ def create_timesheet(
 
 
 @router.get(
-    "/api/businesses/{business_id}/timesheets", response_model=List[TimesheetOut]
+    "/api/businesses/{business_id}/timesheets",
+    response_model=List[TimesheetOut],
+    summary="Get all timesheets",
+    description="Retrieves a list of all timesheet entries for a specific business.",
+    responses={
+        200: {"description": "List of timesheets successfully retrieved."},
+        401: {"description": "Missing or invalid authorization credentials."},
+        403: {"description": "Not authorized to access timesheets."},
+        404: {"description": "Business not found."},
+    },
 )
 def get_timesheets(
     business_id: str,
@@ -199,6 +234,14 @@ def get_timesheets(
 @router.put(
     "/api/businesses/{business_id}/timesheets/{timesheet_id}",
     response_model=TimesheetOut,
+    summary="Update a timesheet",
+    description="Updates an existing timesheet entry.",
+    responses={
+        200: {"description": "Timesheet updated successfully."},
+        401: {"description": "Missing or invalid authorization credentials."},
+        403: {"description": "Not authorized to update timesheet."},
+        404: {"description": "Timesheet not found."},
+    },
 )
 def update_timesheet(
     business_id: str,
@@ -271,7 +314,17 @@ def update_timesheet(
     )
 
 
-@router.delete("/api/businesses/{business_id}/timesheets/{timesheet_id}")
+@router.delete(
+    "/api/businesses/{business_id}/timesheets/{timesheet_id}",
+    summary="Delete a timesheet",
+    description="Deletes a specific timesheet entry.",
+    responses={
+        200: {"description": "Timesheet deleted successfully."},
+        401: {"description": "Missing or invalid authorization credentials."},
+        403: {"description": "Not authorized to delete timesheet."},
+        404: {"description": "Timesheet not found."},
+    },
+)
 def delete_timesheet(
     business_id: str,
     timesheet_id: str,
@@ -308,6 +361,14 @@ class TimesheetStatusUpdate(SQLModel):
 @router.patch(
     "/api/businesses/{business_id}/timesheets/{timesheet_id}/status",
     response_model=TimesheetOut,
+    summary="Update timesheet status",
+    description="Updates the status of a timesheet (submitted, approved, rejected, edited).",
+    responses={
+        200: {"description": "Timesheet status updated successfully."},
+        401: {"description": "Missing or invalid authorization credentials."},
+        403: {"description": "Not authorized to update timesheet status."},
+        404: {"description": "Timesheet not found."},
+    },
 )
 def update_timesheet_status(
     business_id: str,
@@ -360,3 +421,109 @@ def update_timesheet_status(
         status=ts.status,
         created_at=ts.created_at,
     )
+
+
+@router.get(
+    "/api/businesses/{business_id}/timesheets/reports",
+    response_model=List[TimesheetReportOut],
+    summary="Get timesheet reports",
+    description="Retrieves a list of filtered timesheet reports for payroll and analysis.",
+    responses={
+        200: {"description": "List of timesheet reports successfully retrieved."},
+        401: {"description": "Missing or invalid authorization credentials."},
+        403: {"description": "Not authorized to access this business or timesheets."},
+        404: {"description": "Business not found."},
+    },
+)
+def get_timesheet_reports(
+    business_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    location_id: Optional[str] = None,
+    staff_id: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if business_id == "all":
+        if current_user.role == "super_admin":
+            stmt = select(Business)
+            businesses = session.exec(stmt).all()
+            allowed_business_ids = [b.id for b in businesses]
+        else:
+            stmt = select(Business).where(
+                (Business.created_by_id == current_user.id)
+                | (
+                    Business.id.in_(
+                        select(UserAssignment.business_id).where(
+                            UserAssignment.user_id == current_user.id,
+                            UserAssignment.is_active == True,
+                        )
+                    )
+                )
+            )
+            businesses = session.exec(stmt).all()
+            allowed_business_ids = [b.id for b in businesses]
+    else:
+        verify_user_permission(
+            current_user, business_id, "timesheets.read", session=session
+        )
+        allowed_business_ids = [business_id]
+
+    staff_business_ids = []
+    manager_business_ids = []
+    for bid in allowed_business_ids:
+        if check_is_staff(current_user, bid, session):
+            staff_business_ids.append(bid)
+        else:
+            manager_business_ids.append(bid)
+
+    conditions = []
+    if manager_business_ids:
+        conditions.append(Timesheet.business_id.in_(manager_business_ids))
+    if staff_business_ids:
+        conditions.append(
+            (Timesheet.business_id.in_(staff_business_ids))
+            & (Timesheet.staff_id == current_user.id)
+        )
+
+    if not conditions:
+        return []
+
+    stmt = select(Timesheet).where(or_(*conditions))
+
+    if start_date:
+        stmt = stmt.where(Timesheet.work_date >= start_date)
+    if end_date:
+        stmt = stmt.where(Timesheet.work_date <= end_date)
+    if location_id and location_id != "all":
+        stmt = stmt.where(Timesheet.location_id == location_id)
+    if staff_id and staff_id != "all":
+        stmt = stmt.where(Timesheet.staff_id == staff_id)
+    if status and status != "all":
+        stmt = stmt.where(Timesheet.status == status)
+
+    timesheets = session.exec(stmt).all()
+
+    out = []
+    for ts in timesheets:
+        out.append(
+            TimesheetReportOut(
+                id=ts.id,
+                business_id=ts.business_id,
+                business_name=ts.business.name if ts.business else "Unknown Business",
+                location_id=ts.location_id,
+                location_name=ts.location.name if ts.location else "Unknown Location",
+                staff_id=ts.staff_id,
+                staff_name=ts.staff.name if ts.staff else "Unknown Staff",
+                work_date=ts.work_date,
+                start_time=ts.start_time,
+                end_time=ts.end_time,
+                unpaid_break=ts.unpaid_break,
+                notes=ts.notes,
+                total_hours=ts.total_hours,
+                status=ts.status,
+                created_at=ts.created_at,
+            )
+        )
+    return out

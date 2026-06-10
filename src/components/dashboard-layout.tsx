@@ -269,6 +269,8 @@ export default function DashboardLayout({
         return { title: "Timesheet Entry" };
       case "/dashboard/timesheet-review":
         return { title: "Timesheet Review" };
+      case "/dashboard/timesheet-reports":
+        return { title: "Timesheet Reports" };
       default:
         return { title: "Dashboard" };
     }
@@ -356,6 +358,11 @@ export default function DashboardLayout({
     {
       name: "Timesheet Review",
       href: "/dashboard/timesheet-review",
+      icon: FileText,
+    },
+    {
+      name: "Timesheet Reports",
+      href: "/dashboard/timesheet-reports",
       icon: FileText,
     },
   ];
