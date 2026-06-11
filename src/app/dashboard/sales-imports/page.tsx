@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useBusinessStore } from "@/store/business-store";
+import { useBusinessStore } from "@/stores/business-store";
 import { getLocations } from "@/lib/repositories/location.repository";
 import { getRecipes } from "@/lib/repositories/recipe.repository";
 import {

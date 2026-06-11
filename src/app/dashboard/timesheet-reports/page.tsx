@@ -18,9 +18,9 @@ import {
 
 import { Staff } from "@/types/staff";
 import { TimesheetReport } from "@/types/timesheet-report";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
-import { useTimesheetReportStore } from "@/store/timesheet-report-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
+import { useTimesheetReportStore } from "@/stores/timesheet-report-store";
 import { getStaffMembers } from "@/lib/repositories/staff.repository";
 
 export default function TimesheetReportsPage() {

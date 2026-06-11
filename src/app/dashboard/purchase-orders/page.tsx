@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AlertDialog from "@/components/alert-dialog";
-import { useBusinessStore } from "@/store/business-store";
+import { useBusinessStore } from "@/stores/business-store";
 import { useAuth } from "@/providers/auth-provider";
 import {
   getPurchaseOrders,
@@ -49,7 +49,10 @@ export default function PurchaseOrdersPage() {
     loadData();
   }, [activeBusinessId, profile]);
 
-  const handleStatusChange = async (poId: string, newStatus: "completed" | "draft" | "sent") => {
+  const handleStatusChange = async (
+    poId: string,
+    newStatus: "completed" | "draft" | "sent",
+  ) => {
     if (!activeBusinessId) return;
     try {
       await updatePurchaseOrderStatus(activeBusinessId, poId, newStatus);
@@ -108,8 +111,6 @@ export default function PurchaseOrdersPage() {
             </p>
           </div>
         </div>
-
-
 
         {orders.length === 0 ? (
           <div className="bg-white border border-zinc-200 rounded-2xl py-20 px-6 text-center flex flex-col items-center justify-center shadow-xs">
@@ -203,7 +204,6 @@ export default function PurchaseOrdersPage() {
                             Send
                           </button>
                         )}
-
 
                         <button
                           onClick={() => handleDelete(po.id)}

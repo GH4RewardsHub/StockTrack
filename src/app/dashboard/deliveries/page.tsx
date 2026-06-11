@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useBusinessStore } from "@/store/business-store";
+import { useBusinessStore } from "@/stores/business-store";
 import { getSuppliers } from "@/lib/repositories/supplier.repository";
 import { getLocations } from "@/lib/repositories/location.repository";
 import { getPurchaseOrders } from "@/lib/repositories/purchase-order.repository";
@@ -187,7 +187,9 @@ export default function DeliveriesPage() {
         items: itemsPayload,
       });
 
-      toast.success("Delivery confirmed and inventory levels updated successfully!");
+      toast.success(
+        "Delivery confirmed and inventory levels updated successfully!",
+      );
       setIsPanelOpen(false);
 
       setSelectedSupplierId("");

@@ -4,9 +4,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import AlertDialog from "@/components/alert-dialog";
-import { useBusinessStore } from "@/store/business-store";
-import { useRecipeStore } from "@/store/recipe-store";
-import { useCategoryStore } from "@/store/category-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useRecipeStore } from "@/stores/recipe-store";
+import { useCategoryStore } from "@/stores/category-store";
 import { useAuth } from "@/providers/auth-provider";
 import { getStockItems } from "@/lib/repositories/stock-item.repository";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
@@ -67,7 +67,8 @@ export default function RecipesPage() {
     { itemId: string; qtyUsed: number }[]
   >([]);
   const [formSalesAmount, setFormSalesAmount] = useState("");
-  const [isSalesAmountManuallySet, setIsSalesAmountManuallySet] = useState(false);
+  const [isSalesAmountManuallySet, setIsSalesAmountManuallySet] =
+    useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +138,11 @@ export default function RecipesPage() {
         qtyUsed: ing.qtyUsed,
       })),
     );
-    setFormSalesAmount(rec.salesAmount !== undefined && rec.salesAmount !== null ? String(rec.salesAmount) : "");
+    setFormSalesAmount(
+      rec.salesAmount !== undefined && rec.salesAmount !== null
+        ? String(rec.salesAmount)
+        : "",
+    );
     setIsSalesAmountManuallySet(true);
     setError(null);
     setShowDrawer(true);
@@ -145,7 +150,13 @@ export default function RecipesPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeBusinessId || !formName.trim() || formYieldQty <= 0 || !formSalesAmount.trim() || parseFloat(formSalesAmount) < 0) {
+    if (
+      !activeBusinessId ||
+      !formName.trim() ||
+      formYieldQty <= 0 ||
+      !formSalesAmount.trim() ||
+      parseFloat(formSalesAmount) < 0
+    ) {
       setError("Please fill in all required fields correctly.");
       return;
     }
@@ -263,7 +274,9 @@ export default function RecipesPage() {
   // Sync sales amount with serving cost if not manually set
   useEffect(() => {
     if (!editId && !isSalesAmountManuallySet) {
-      setFormSalesAmount(currentServingCost > 0 ? currentServingCost.toFixed(2) : "");
+      setFormSalesAmount(
+        currentServingCost > 0 ? currentServingCost.toFixed(2) : "",
+      );
     }
   }, [currentServingCost, isSalesAmountManuallySet, editId]);
 
@@ -428,9 +441,7 @@ export default function RecipesPage() {
                     <th className="py-4 px-6 font-extrabold">
                       Cost per Serving
                     </th>
-                    <th className="py-4 px-6 font-extrabold">
-                      Sales Amount
-                    </th>
+                    <th className="py-4 px-6 font-extrabold">Sales Amount</th>
                     <th className="py-4 px-6 font-extrabold">Status</th>
                     <th className="py-4 px-6 font-extrabold text-right">
                       Actions
@@ -481,7 +492,10 @@ export default function RecipesPage() {
                       </td>
 
                       <td className="py-4 px-6 font-extrabold text-zinc-950">
-                        ${(rec.salesAmount ?? rec.costPerServing ?? 0).toFixed(2)}
+                        $
+                        {(rec.salesAmount ?? rec.costPerServing ?? 0).toFixed(
+                          2,
+                        )}
                       </td>
 
                       <td className="py-4 px-6">

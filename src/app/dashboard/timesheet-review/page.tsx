@@ -22,8 +22,8 @@ import { Staff } from "@/types/staff";
 import { Business } from "@/types/business";
 import { Timesheet } from "@/types/timesheet";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getStaffMembers } from "@/lib/repositories/staff.repository";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import {

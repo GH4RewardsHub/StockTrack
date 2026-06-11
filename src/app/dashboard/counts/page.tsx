@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { useEffect, useState, useRef } from "react";
 import AlertDialog from "@/components/alert-dialog";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getStockItems } from "@/lib/repositories/stock-item.repository";
 import {
   getStockCounts,

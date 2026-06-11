@@ -3,8 +3,8 @@
 import { Business } from "@/types/business";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { Location, LocationType } from "@/types/inventory";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import {

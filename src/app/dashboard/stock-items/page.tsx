@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AlertDialog from "@/components/alert-dialog";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import {
   StockItem,
   Category,
@@ -160,17 +160,13 @@ export default function StockItemsPage() {
     if (!activeBusinessId) return;
     try {
       setLoading(true);
-      const [
-        itemsList,
-        categoriesList,
-        suppliersList,
-        locationsList,
-      ] = await Promise.all([
-        getStockItems(activeBusinessId),
-        getCategories(activeBusinessId),
-        getSuppliers(activeBusinessId),
-        getLocations(activeBusinessId),
-      ]);
+      const [itemsList, categoriesList, suppliersList, locationsList] =
+        await Promise.all([
+          getStockItems(activeBusinessId),
+          getCategories(activeBusinessId),
+          getSuppliers(activeBusinessId),
+          getLocations(activeBusinessId),
+        ]);
 
       setItems(itemsList);
       setCategories(categoriesList);
@@ -186,7 +182,7 @@ export default function StockItemsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBusinessId, profile]);
 
   const openAddDrawer = () => {
@@ -1153,7 +1149,9 @@ export default function StockItemsPage() {
                                           }
                                         }}
                                       />
-                                      <span className="truncate">{loc.name}</span>
+                                      <span className="truncate">
+                                        {loc.name}
+                                      </span>
                                     </label>
                                   );
                                 })}
@@ -1841,7 +1839,11 @@ export default function StockItemsPage() {
                 type="submit"
                 onClick={handleSave}
                 disabled={
-                  saving || !formName.trim() || !formCategoryId || !formBaseUnit || !formSupplierId
+                  saving ||
+                  !formName.trim() ||
+                  !formCategoryId ||
+                  !formBaseUnit ||
+                  !formSupplierId
                 }
                 className="bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
               >

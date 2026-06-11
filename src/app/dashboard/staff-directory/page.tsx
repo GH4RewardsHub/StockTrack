@@ -4,9 +4,9 @@
 import { toast } from "sonner";
 import { useEffect, useState, useCallback } from "react";
 
-import { useStaffStore } from "@/store/staff-store";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useStaffStore } from "@/stores/staff-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import { getLocations } from "@/lib/repositories/location.repository";
 import {
@@ -52,7 +52,9 @@ export default function StaffDirectoryPage() {
   const [activeBusiness, setActiveBusiness] = useState<Business | null>(null);
   const [loadingContext, setLoadingContext] = useState(true);
 
-  const [activeTab, setActiveTab] = useState<"directory" | "pending">("directory");
+  const [activeTab, setActiveTab] = useState<"directory" | "pending">(
+    "directory",
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [businessFilter, setBusinessFilter] = useState("all");
@@ -68,14 +70,20 @@ export default function StaffDirectoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const [pendingStaff, setPendingStaff] = useState<PendingStaffAssignment[]>([]);
+  const [pendingStaff, setPendingStaff] = useState<PendingStaffAssignment[]>(
+    [],
+  );
   const [loadingPending, setLoadingPending] = useState(false);
 
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState("staff");
   const [selectedBusinesses, setSelectedBusinesses] = useState<string[]>([]);
-  const [selectedLocations, setSelectedLocations] = useState<Record<string, string[]>>({});
-  const [businessLocations, setBusinessLocations] = useState<Record<string, Location[]>>({});
+  const [selectedLocations, setSelectedLocations] = useState<
+    Record<string, string[]>
+  >({});
+  const [businessLocations, setBusinessLocations] = useState<
+    Record<string, Location[]>
+  >({});
   const [expiresInHours, setExpiresInHours] = useState(48);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
@@ -295,7 +303,10 @@ export default function StaffDirectoryPage() {
           const locs = await getLocations(bizId);
           setBusinessLocations((prev) => ({ ...prev, [bizId]: locs }));
         } catch (err) {
-          if(err instanceof Error)toast.error(err.message ||"Failed to load locations for this business.");
+          if (err instanceof Error)
+            toast.error(
+              err.message || "Failed to load locations for this business.",
+            );
         }
       }
     }
@@ -319,9 +330,8 @@ export default function StaffDirectoryPage() {
   const handleToggleAllLocations = (bizId: string) => {
     const allLocs = businessLocations[bizId] || [];
     const currentLocs = selectedLocations[bizId] || [];
-    
+
     if (currentLocs.length === allLocs.length) {
-   
       setSelectedLocations((prev) => ({
         ...prev,
         [bizId]: [],
@@ -374,13 +384,18 @@ export default function StaffDirectoryPage() {
   const handleShareWhatsApp = () => {
     if (!generatedLink) return;
     const msg = `Click the link to join our team on StockTrack: ${generatedLink}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(
+      `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,
+      "_blank",
+    );
   };
 
   const handleShareEmail = () => {
     if (!generatedLink) return;
     const subject = encodeURIComponent("Invitation to join StockTrack staff");
-    const body = encodeURIComponent(`Please register via this unique link to set up your staff account: ${generatedLink}`);
+    const body = encodeURIComponent(
+      `Please register via this unique link to set up your staff account: ${generatedLink}`,
+    );
     window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
   };
 
@@ -429,14 +444,14 @@ export default function StaffDirectoryPage() {
 
   return (
     <div className="p-6 bg-white min-h-[80vh] relative select-none">
-      
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-zinc-200 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
             Staff Directory
           </h1>
           <p className="text-[#64748B] text-xs font-bold mt-1.5">
-            View and manage all staff members, invitations, and access permissions.
+            View and manage all staff members, invitations, and access
+            permissions.
           </p>
         </div>
 
@@ -734,8 +749,9 @@ export default function StaffDirectoryPage() {
                   {filteredStaff.length > 0
                     ? (currentPage - 1) * itemsPerPage + 1
                     : 0}{" "}
-                  to {Math.min(currentPage * itemsPerPage, filteredStaff.length)} of{" "}
-                  {filteredStaff.length} staff members
+                  to{" "}
+                  {Math.min(currentPage * itemsPerPage, filteredStaff.length)}{" "}
+                  of {filteredStaff.length} staff members
                 </span>
 
                 <div className="flex items-center gap-4">
@@ -785,7 +801,6 @@ export default function StaffDirectoryPage() {
           )}
         </>
       ) : (
-      
         <div className="mt-6">
           {loadingPending ? (
             <div className="py-20 flex flex-col items-center justify-center bg-white border border-zinc-200 rounded-2xl">
@@ -801,7 +816,8 @@ export default function StaffDirectoryPage() {
                 No pending approvals
               </h3>
               <p className="text-[#64748B] text-xs mt-1 font-semibold max-w-xs leading-relaxed">
-                All staff access requests are processed. There are no users waiting for access.
+                All staff access requests are processed. There are no users
+                waiting for access.
               </p>
             </div>
           ) : (
@@ -821,12 +837,23 @@ export default function StaffDirectoryPage() {
                   </thead>
                   <tbody className="divide-y divide-zinc-200 text-xs text-[#0F172A]">
                     {pendingStaff.map((p) => (
-                      <tr key={p.id} className="hover:bg-zinc-50/40 transition-colors">
-                        <td className="py-4 px-6 font-extrabold">{p.user_name || "New Staff"}</td>
-                        <td className="py-4 px-6 text-[#64748B] font-medium">{p.user_email}</td>
-                        <td className="py-4 px-6 text-[#64748B] font-medium">{p.user_phone || "N/A"}</td>
+                      <tr
+                        key={p.id}
+                        className="hover:bg-zinc-50/40 transition-colors"
+                      >
+                        <td className="py-4 px-6 font-extrabold">
+                          {p.user_name || "New Staff"}
+                        </td>
+                        <td className="py-4 px-6 text-[#64748B] font-medium">
+                          {p.user_email}
+                        </td>
+                        <td className="py-4 px-6 text-[#64748B] font-medium">
+                          {p.user_phone || "N/A"}
+                        </td>
                         <td className="py-4 px-6">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getRoleBadgeClass(p.role)}`}>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getRoleBadgeClass(p.role)}`}
+                          >
                             {p.role}
                           </span>
                         </td>
@@ -870,11 +897,14 @@ export default function StaffDirectoryPage() {
       {isAddStaffOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 animate-fade-in p-4">
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 w-full max-w-xl shadow-2xl relative animate-scale-in max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-start border-b border-zinc-200 pb-4 mb-4">
+            <div className="flex justify-between items-start border-b border-zinc-200 pb-4 mb-4">
               <div>
-                <h3 className="text-xl font-extrabold text-[#0F172A]">Invite Staff Member</h3>
+                <h3 className="text-xl font-extrabold text-[#0F172A]">
+                  Invite Staff Member
+                </h3>
                 <p className="text-[#64748B] text-xs font-bold mt-1">
-                  Create a unique invitation link with preconfigured roles and permissions.
+                  Create a unique invitation link with preconfigured roles and
+                  permissions.
                 </p>
               </div>
               <button
@@ -891,7 +921,7 @@ export default function StaffDirectoryPage() {
                   <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block">
                     Your unique invitation link is ready:
                   </span>
-                  
+
                   <div className="flex items-center gap-2 bg-white border border-zinc-300 rounded-xl py-2 px-3">
                     <input
                       type="text"
@@ -903,12 +933,19 @@ export default function StaffDirectoryPage() {
                       onClick={handleCopyLink}
                       className="p-1.5 hover:bg-zinc-50 rounded-lg text-zinc-500 hover:text-[#16A34A] transition cursor-pointer"
                     >
-                      {copied ? <Check className="h-4 w-4 text-[#16A34A]" /> : <Copy className="h-4 w-4" />}
+                      {copied ? (
+                        <Check className="h-4 w-4 text-[#16A34A]" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
-                  
+
                   <p className="text-[11px] text-[#64748B] font-semibold leading-relaxed">
-                    Share this unique link via WhatsApp, SMS, or Email. The link expires in {expiresInHours} hours. Once staff registers, you can approve their access in the <span className="font-bold">Pending Approvals</span> tab.
+                    Share this unique link via WhatsApp, SMS, or Email. The link
+                    expires in {expiresInHours} hours. Once staff registers, you
+                    can approve their access in the{" "}
+                    <span className="font-bold">Pending Approvals</span> tab.
                   </p>
                 </div>
 
@@ -939,7 +976,6 @@ export default function StaffDirectoryPage() {
               </div>
             ) : (
               <div className="space-y-5 py-2">
-        
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-extrabold text-[#0F172A] uppercase tracking-wider block">
                     Access Role
@@ -954,9 +990,12 @@ export default function StaffDirectoryPage() {
                           : "border-zinc-200 bg-white hover:bg-zinc-50/50 text-zinc-500"
                       }`}
                     >
-                      <span className="text-sm font-extrabold block">Staff</span>
+                      <span className="text-sm font-extrabold block">
+                        Staff
+                      </span>
                       <span className="text-[11px] text-zinc-400 font-semibold mt-1">
-                        General staff permissions for entering timesheets and sales records.
+                        General staff permissions for entering timesheets and
+                        sales records.
                       </span>
                     </button>
 
@@ -969,9 +1008,12 @@ export default function StaffDirectoryPage() {
                           : "border-zinc-200 bg-white hover:bg-zinc-50/50 text-zinc-500"
                       }`}
                     >
-                      <span className="text-sm font-extrabold block">Manager</span>
+                      <span className="text-sm font-extrabold block">
+                        Manager
+                      </span>
                       <span className="text-[11px] text-zinc-400 font-semibold mt-1">
-                        Advanced supervisor access for reviewing data and creating reports.
+                        Advanced supervisor access for reviewing data and
+                        creating reports.
                       </span>
                     </button>
                   </div>
@@ -981,21 +1023,28 @@ export default function StaffDirectoryPage() {
                   <label className="text-[10px] font-extrabold text-[#0F172A] uppercase tracking-wider block">
                     Select Businesses & Locations
                   </label>
-                  
+
                   <div className="border border-zinc-200 rounded-2xl p-4 max-h-[30vh] overflow-y-auto space-y-3 bg-zinc-50/30">
                     {businesses.length === 0 ? (
-                      <span className="text-xs text-zinc-400 font-semibold italic">No businesses available.</span>
+                      <span className="text-xs text-zinc-400 font-semibold italic">
+                        No businesses available.
+                      </span>
                     ) : (
                       businesses.map((b) => {
                         const isBizChecked = selectedBusinesses.includes(b.id);
                         const allLocs = businessLocations[b.id] || [];
-                        const currentCheckedLocs = selectedLocations[b.id] || [];
+                        const currentCheckedLocs =
+                          selectedLocations[b.id] || [];
                         const hasLocations = allLocs.length > 0;
-                        const allLocsChecked = hasLocations && currentCheckedLocs.length === allLocs.length;
+                        const allLocsChecked =
+                          hasLocations &&
+                          currentCheckedLocs.length === allLocs.length;
 
                         return (
-                          <div key={b.id} className="border border-zinc-200/80 rounded-xl bg-white p-3 space-y-2.5">
-                         
+                          <div
+                            key={b.id}
+                            className="border border-zinc-200/80 rounded-xl bg-white p-3 space-y-2.5"
+                          >
                             <label className="flex items-center gap-2.5 cursor-pointer select-none">
                               <input
                                 type="checkbox"
@@ -1017,23 +1066,35 @@ export default function StaffDirectoryPage() {
                                       <input
                                         type="checkbox"
                                         checked={allLocsChecked}
-                                        onChange={() => handleToggleAllLocations(b.id)}
+                                        onChange={() =>
+                                          handleToggleAllLocations(b.id)
+                                        }
                                         className="h-3.5 w-3.5 rounded border-zinc-300 text-[#16A34A] focus:ring-[#16A34A] cursor-pointer"
                                       />
-                                      <span>Select All Locations ({allLocs.length})</span>
+                                      <span>
+                                        Select All Locations ({allLocs.length})
+                                      </span>
                                     </label>
 
-                                   
                                     <div className="grid grid-cols-2 gap-2 mt-1.5">
                                       {allLocs.map((loc) => (
-                                        <label key={loc.id} className="flex items-center gap-2 cursor-pointer select-none text-[11px] font-semibold text-zinc-700">
+                                        <label
+                                          key={loc.id}
+                                          className="flex items-center gap-2 cursor-pointer select-none text-[11px] font-semibold text-zinc-700"
+                                        >
                                           <input
                                             type="checkbox"
-                                            checked={currentCheckedLocs.includes(loc.id)}
-                                            onChange={() => handleToggleLocation(b.id, loc.id)}
+                                            checked={currentCheckedLocs.includes(
+                                              loc.id,
+                                            )}
+                                            onChange={() =>
+                                              handleToggleLocation(b.id, loc.id)
+                                            }
                                             className="h-3.5 w-3.5 rounded border-zinc-300 text-[#16A34A] focus:ring-[#16A34A] cursor-pointer"
                                           />
-                                          <span className="truncate">{loc.name}</span>
+                                          <span className="truncate">
+                                            {loc.name}
+                                          </span>
                                         </label>
                                       ))}
                                     </div>
@@ -1059,7 +1120,9 @@ export default function StaffDirectoryPage() {
                   <div className="relative">
                     <select
                       value={expiresInHours}
-                      onChange={(e) => setExpiresInHours(Number(e.target.value))}
+                      onChange={(e) =>
+                        setExpiresInHours(Number(e.target.value))
+                      }
                       className="w-full bg-white border border-zinc-200 focus:border-[#16A34A] rounded-xl py-3 px-3.5 text-xs text-zinc-950 font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer pr-10"
                     >
                       <option value={24}>24 Hours</option>

@@ -16,9 +16,9 @@ import {
   Info,
 } from "lucide-react";
 
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
-import { useAvailabilityStore } from "@/store/availability-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
+import { useAvailabilityStore } from "@/stores/availability-store";
 import {
   AvailabilityOverviewItem,
   OverviewStaffMember,

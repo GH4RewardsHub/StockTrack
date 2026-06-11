@@ -5,8 +5,8 @@
 
 import { useAuth } from "@/providers/auth-provider";
 import { useEffect, useState, useMemo } from "react";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getRefillSuggestions } from "@/lib/repositories/refill.repository";
 import { createPurchaseOrder } from "@/lib/repositories/purchase-order.repository";
 import { getSuppliers } from "@/lib/repositories/supplier.repository";
@@ -63,7 +63,10 @@ export default function RefillPlannerPage() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   const [creatingPO, setCreatingPO] = useState(false);
-  const [confirmPO, setConfirmPO] = useState<{ targetSupplierId?: string; summary: string } | null>(null);
+  const [confirmPO, setConfirmPO] = useState<{
+    targetSupplierId?: string;
+    summary: string;
+  } | null>(null);
 
   const [showColumns, setShowColumns] = useState({
     currentStock: true,
@@ -249,7 +252,9 @@ export default function RefillPlannerPage() {
     }, 0);
 
     if (totalQty <= 0) {
-      toast.error("All selected items have 0 quantity. Adjust quantities before creating a purchase order.");
+      toast.error(
+        "All selected items have 0 quantity. Adjust quantities before creating a purchase order.",
+      );
       return;
     }
 
@@ -261,7 +266,9 @@ export default function RefillPlannerPage() {
 
     const itemsWithNoSupplier = selectedCount.filter((s) => !s.supplierId);
     if (itemsWithNoSupplier.length === selectedCount.length) {
-      toast.error("None of the selected items have a supplier assigned. Assign suppliers before creating purchase orders.");
+      toast.error(
+        "None of the selected items have a supplier assigned. Assign suppliers before creating purchase orders.",
+      );
       return;
     }
 
@@ -304,7 +311,9 @@ export default function RefillPlannerPage() {
 
       const supplierIds = Object.keys(itemsToOrder);
       if (supplierIds.length === 0) {
-        toast.error("No items with valid suppliers and positive quantities selected.");
+        toast.error(
+          "No items with valid suppliers and positive quantities selected.",
+        );
         return;
       }
 
@@ -320,7 +329,9 @@ export default function RefillPlannerPage() {
         poNumbers.push(res.poNumber);
       }
 
-      toast.success(`Purchase order${poNumbers.length > 1 ? "s" : ""} created: ${poNumbers.join(", ")}`);
+      toast.success(
+        `Purchase order${poNumbers.length > 1 ? "s" : ""} created: ${poNumbers.join(", ")}`,
+      );
       await loadData();
     } catch (err: any) {
       console.error(err);
@@ -381,7 +392,6 @@ export default function RefillPlannerPage() {
             </button>
           </div>
         </div>
-
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-xs flex items-center gap-4">
@@ -692,7 +702,11 @@ export default function RefillPlannerPage() {
         open={confirmPO !== null}
         variant="info"
         title="Create Purchase Order"
-        description={confirmPO ? `You are about to create purchase order(s) for ${confirmPO.summary}. This will create draft POs that you can review before sending to suppliers.` : ""}
+        description={
+          confirmPO
+            ? `You are about to create purchase order(s) for ${confirmPO.summary}. This will create draft POs that you can review before sending to suppliers.`
+            : ""
+        }
         confirmLabel="Create PO"
         cancelLabel="Cancel"
         onConfirm={handleCreatePurchaseOrders}

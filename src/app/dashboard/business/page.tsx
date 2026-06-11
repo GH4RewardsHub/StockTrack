@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
+import { useBusinessStore } from "@/stores/business-store";
 import {
   getUserBusinesses,
   createBusinessAndLink,
@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { Business } from "@/types/business";
 import { toast } from "sonner";
-
 
 export default function DashboardBusinessPage() {
   const router = useRouter();
@@ -90,10 +89,7 @@ export default function DashboardBusinessPage() {
     try {
       setCreating(true);
 
-      const created = await createBusinessAndLink(
-        user.uid,
-        trimmedName,
-      );
+      const created = await createBusinessAndLink(user.uid, trimmedName);
       await refreshProfile();
 
       const newBusiness: Business = {
@@ -114,7 +110,10 @@ export default function DashboardBusinessPage() {
       handleSelect(created.id);
     } catch (err: unknown) {
       console.error("Failed to create business:", err);
-      toast.error((err as Error).message || "Failed to create business. Please try again.");
+      toast.error(
+        (err as Error).message ||
+          "Failed to create business. Please try again.",
+      );
     } finally {
       setCreating(false);
     }
@@ -159,8 +158,6 @@ export default function DashboardBusinessPage() {
           </button>
         )}
       </div>
-
-
 
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
         <div className="relative w-full sm:max-w-md">

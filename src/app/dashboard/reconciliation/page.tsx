@@ -9,10 +9,10 @@ import { useEffect, useState, useMemo, useRef } from "react";
 
 import { Business } from "@/types/business";
 import AlertDialog from "@/components/alert-dialog";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
-import { useCategoryStore } from "@/store/category-store";
-import { useSupplierStore } from "@/store/supplier-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
+import { useCategoryStore } from "@/stores/category-store";
+import { useSupplierStore } from "@/stores/supplier-store";
 import { Reconciliation } from "@/types/reconciliation";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import {
@@ -516,13 +516,28 @@ export default function ReconciliationPage() {
       <div className="h-[75vh] flex flex-col items-center justify-center bg-white text-[#0F172A] p-6 text-center">
         <div className="bg-rose-50 border border-rose-100 rounded-3xl p-8 max-w-md shadow-xs space-y-4">
           <div className="h-12 w-12 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto text-rose-600">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
             </svg>
           </div>
-          <h2 className="text-lg font-extrabold text-zinc-950">Permission Denied</h2>
+          <h2 className="text-lg font-extrabold text-zinc-950">
+            Permission Denied
+          </h2>
           <p className="text-zinc-500 text-xs font-semibold leading-relaxed">
-            {error.includes("permission") || error.includes("authorized") || error.includes("403")
+            {error.includes("permission") ||
+            error.includes("authorized") ||
+            error.includes("403")
               ? "You do not have the required permissions to view stock reconciliation. Please contact your system administrator."
               : error}
           </p>

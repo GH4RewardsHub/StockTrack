@@ -17,8 +17,8 @@ import {
 
 import { Staff } from "@/types/staff";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getStaffMembers } from "@/lib/repositories/staff.repository";
 import { createTimesheet } from "@/lib/repositories/timesheet.repository";
 

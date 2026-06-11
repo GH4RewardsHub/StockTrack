@@ -5,8 +5,8 @@
 
 import { useAuth } from "@/providers/auth-provider";
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import { getCategories } from "@/lib/repositories/category.repository";
 import { getStockItems } from "@/lib/repositories/stock-item.repository";
@@ -561,7 +561,9 @@ export default function ConsumptionPage() {
                   <th className="py-4 px-6 font-extrabold">Base Unit</th>
                   <th className="py-4 px-6 font-extrabold">Opening Stock</th>
                   <th className="py-4 px-6 font-extrabold">Delivery</th>
-                  <th className="py-4 px-6 font-extrabold">Today's Stock (Closing)</th>
+                  <th className="py-4 px-6 font-extrabold">
+                    Today's Stock (Closing)
+                  </th>
                   <th className="py-4 px-6 font-extrabold">
                     Consumed (Base Units)
                   </th>

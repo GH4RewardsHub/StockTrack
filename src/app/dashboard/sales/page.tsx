@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import AlertDialog from "@/components/alert-dialog";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
-import { useSaleStore } from "@/store/sale-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
+import { useSaleStore } from "@/stores/sale-store";
 import { getLocations } from "@/lib/repositories/location.repository";
 import { getRecipes } from "@/lib/repositories/recipe.repository";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
@@ -144,7 +144,8 @@ export default function SalesEntryPage() {
         name: selectedRecipe.recipeName,
         recipeCode: selectedRecipe.recipeCode || "",
         unit: selectedRecipe.yieldUnit || "serving",
-        unitPrice: selectedRecipe.salesAmount || selectedRecipe.costPerServing || 0.0,
+        unitPrice:
+          selectedRecipe.salesAmount || selectedRecipe.costPerServing || 0.0,
       };
       return updated;
     });
@@ -219,12 +220,10 @@ export default function SalesEntryPage() {
   const handleConfirmCompleteSale = async () => {
     if (!activeBusinessId || !saleToComplete) return;
     try {
-      await updateSaleStatus(
-        activeBusinessId,
-        saleToComplete.id,
-        "completed"
+      await updateSaleStatus(activeBusinessId, saleToComplete.id, "completed");
+      toast.success(
+        `Sale ${saleToComplete.saleNumber || ""} successfully completed!`,
       );
-      toast.success(`Sale ${saleToComplete.saleNumber || ""} successfully completed!`);
       if (viewingSale && viewingSale.id === saleToComplete.id) {
         setViewingSale(null);
         setShowAllSales(false);

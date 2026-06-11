@@ -7,8 +7,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { Business } from "@/types/business";
 import { useAuth } from "@/providers/auth-provider";
 import { logoutUser } from "@/lib/services/auth.service";
-import { useLocationStore } from "@/store/location-store";
-import { useBusinessStore } from "@/store/business-store";
+import { useLocationStore } from "@/stores/location-store";
+import { useBusinessStore } from "@/stores/business-store";
 import sidebarPermissions from "@/config/sidebar-permissions.json";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import {
@@ -338,7 +338,7 @@ export default function DashboardLayout({
   ];
 
   const adminLinks: SidebarLink[] = [
-    { name: "Users", href: "/dashboard/users", icon: Users },
+    // { name: "Users", href: "/dashboard/users", icon: Users },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useBusinessStore } from "@/store/business-store";
+import { useBusinessStore } from "@/stores/business-store";
 import { getDashboardMetrics } from "@/lib/repositories/stock-item.repository";
 import {
   AlertTriangle,
@@ -73,8 +73,13 @@ export default function DashboardPage() {
     <div className="space-y-8 bg-white text-[#0F172A]">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">Overview</h1>
-          <p className="text-[#64748B] text-xs mt-1 font-semibold">Real-time status of your venue's stock, orders, and reconciliation metrics.</p>
+          <h1 className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
+            Overview
+          </h1>
+          <p className="text-[#64748B] text-xs mt-1 font-semibold">
+            Real-time status of your venue's stock, orders, and reconciliation
+            metrics.
+          </p>
         </div>
 
         <div className="flex gap-3">
@@ -159,13 +164,16 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         <div className="lg:col-span-2 bg-[#F1F5F9]/50 border border-zinc-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
           <div>
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-base font-bold text-[#0F172A]">Stock Variance Analytics</h3>
-                <p className="text-[#64748B] text-[11px] mt-0.5 font-semibold">Variance rate comparison across key categories.</p>
+                <h3 className="text-base font-bold text-[#0F172A]">
+                  Stock Variance Analytics
+                </h3>
+                <p className="text-[#64748B] text-[11px] mt-0.5 font-semibold">
+                  Variance rate comparison across key categories.
+                </p>
               </div>
               <span className="text-[10px] font-bold text-[#16A34A] bg-[#DCFCE7] border border-[#16A34A]/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Healthy Baseline
@@ -176,40 +184,68 @@ export default function DashboardPage() {
               <div>
                 <div className="flex justify-between text-xs text-[#0F172A] mb-1.5 font-bold">
                   <span>Dairy (Mozzarella, Milk)</span>
-                  <span>1.2% variance <span className="text-[#16A34A] font-extrabold">(Low)</span></span>
+                  <span>
+                    1.2% variance{" "}
+                    <span className="text-[#16A34A] font-extrabold">(Low)</span>
+                  </span>
                 </div>
                 <div className="w-full bg-zinc-200 h-2.5 rounded-full overflow-hidden border border-zinc-300/30">
-                  <div className="bg-[#16A34A] h-full rounded-full" style={{ width: "35%" }} />
+                  <div
+                    className="bg-[#16A34A] h-full rounded-full"
+                    style={{ width: "35%" }}
+                  />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-xs text-[#0F172A] mb-1.5 font-bold">
                   <span>Meat & Proteins (Pepperoni, Chicken)</span>
-                  <span>3.8% variance <span className="text-[#F59E0B] font-extrabold">(Medium)</span></span>
+                  <span>
+                    3.8% variance{" "}
+                    <span className="text-[#F59E0B] font-extrabold">
+                      (Medium)
+                    </span>
+                  </span>
                 </div>
                 <div className="w-full bg-zinc-200 h-2.5 rounded-full overflow-hidden border border-zinc-300/30">
-                  <div className="bg-[#F59E0B] h-full rounded-full" style={{ width: "70%" }} />
+                  <div
+                    className="bg-[#F59E0B] h-full rounded-full"
+                    style={{ width: "70%" }}
+                  />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-xs text-[#0F172A] mb-1.5 font-bold">
                   <span>Dry Goods & Flour</span>
-                  <span>0.5% variance <span className="text-[#16A34A] font-extrabold">(Low)</span></span>
+                  <span>
+                    0.5% variance{" "}
+                    <span className="text-[#16A34A] font-extrabold">(Low)</span>
+                  </span>
                 </div>
                 <div className="w-full bg-zinc-200 h-2.5 rounded-full overflow-hidden border border-zinc-300/30">
-                  <div className="bg-[#16A34A] h-full rounded-full" style={{ width: "15%" }} />
+                  <div
+                    className="bg-[#16A34A] h-full rounded-full"
+                    style={{ width: "15%" }}
+                  />
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between text-xs text-[#0F172A] mb-1.5 font-bold">
                   <span>Packaging & Box Cartons</span>
-                  <span>5.6% variance <span className="text-[#EF4444] font-extrabold">(High)</span></span>
+                  <span>
+                    5.6% variance{" "}
+                    <span className="text-[#EF4444] font-extrabold">
+                      (High)
+                    </span>
+                  </span>
                 </div>
                 <div className="w-full bg-zinc-200 h-2.5 rounded-full overflow-hidden border border-zinc-300/30">
-                  <div className="bg-[#EF4444] h-full rounded-full" style={{ width: "90%" }} />
+                  <div
+                    className="bg-[#EF4444] h-full rounded-full"
+                    style={{ width: "90%" }}
+                  />
                 </div>
               </div>
             </div>
@@ -228,25 +264,39 @@ export default function DashboardPage() {
         </div>
 
         <div className="bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col shadow-sm">
-          <h3 className="text-base font-bold text-[#0F172A] mb-1">Low Stock Watchlist</h3>
-          <p className="text-[#64748B] text-[11px] mb-4 font-semibold">Stock items requiring priority ordering drafts.</p>
+          <h3 className="text-base font-bold text-[#0F172A] mb-1">
+            Low Stock Watchlist
+          </h3>
+          <p className="text-[#64748B] text-[11px] mb-4 font-semibold">
+            Stock items requiring priority ordering drafts.
+          </p>
 
           <div className="flex-1 divide-y divide-zinc-200">
             {stats.totalItems === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6">
                 <Package className="h-7 w-7 text-zinc-300 mb-2" />
-                <span className="text-xs text-[#64748B] font-bold">No items registered</span>
+                <span className="text-xs text-[#64748B] font-bold">
+                  No items registered
+                </span>
                 <span className="text-[10px] text-zinc-400 mt-1 max-w-[150px] font-semibold">
                   Go to Stock Items to create your product list.
                 </span>
               </div>
             ) : (
               lowStockItems.map((item) => (
-                <div key={item.id} className="py-3 flex items-center justify-between">
+                <div
+                  key={item.id}
+                  className="py-3 flex items-center justify-between"
+                >
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#0F172A] truncate">{item.name}</p>
+                    <p className="text-xs font-bold text-[#0F172A] truncate">
+                      {item.name}
+                    </p>
                     <p className="text-[10px] text-[#64748B] font-bold mt-0.5">
-                      Min Alert: <span className="font-mono text-[#0F172A] font-extrabold">{item.reorderLevelBaseQty} {item.baseUnit}</span>
+                      Min Alert:{" "}
+                      <span className="font-mono text-[#0F172A] font-extrabold">
+                        {item.reorderLevelBaseQty} {item.baseUnit}
+                      </span>
                     </p>
                   </div>
                   <span className="text-[10px] font-bold text-[#F59E0B] bg-amber-50 border border-[#F59E0B]/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -269,8 +319,12 @@ export default function DashboardPage() {
       <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-sm">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-base font-bold text-[#0F172A]">Recent Count Sessions</h3>
-            <p className="text-[#64748B] text-[11px] mt-0.5 font-semibold">Latest physical counts submitted by operational staff.</p>
+            <h3 className="text-base font-bold text-[#0F172A]">
+              Recent Count Sessions
+            </h3>
+            <p className="text-[#64748B] text-[11px] mt-0.5 font-semibold">
+              Latest physical counts submitted by operational staff.
+            </p>
           </div>
           <button
             onClick={() => router.push("/dashboard/reports")}
@@ -283,9 +337,12 @@ export default function DashboardPage() {
         {recentSessions.length === 0 ? (
           <div className="text-center py-10 flex flex-col items-center justify-center">
             <Calendar className="h-8 w-8 text-zinc-300 mb-2" />
-            <span className="text-xs font-bold text-[#64748B] block">No count sessions recorded yet</span>
+            <span className="text-xs font-bold text-[#64748B] block">
+              No count sessions recorded yet
+            </span>
             <p className="text-[10px] text-zinc-400 mt-1 max-w-[250px] leading-relaxed font-semibold">
-              When staff submit physical counts from the Mobile App, they will register here instantly.
+              When staff submit physical counts from the Mobile App, they will
+              register here instantly.
             </p>
           </div>
         ) : (
@@ -297,17 +354,23 @@ export default function DashboardPage() {
                   <th className="pb-3 font-extrabold">Session Type</th>
                   <th className="pb-3 font-extrabold">Status</th>
                   <th className="pb-3 font-extrabold">Stage</th>
-                  <th className="pb-3 font-extrabold text-right">Items Counted</th>
+                  <th className="pb-3 font-extrabold text-right">
+                    Items Counted
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 text-xs">
                 {recentSessions.map((session) => (
-                  <tr key={session.id} className="hover:bg-zinc-50 transition-colors">
+                  <tr
+                    key={session.id}
+                    className="hover:bg-zinc-50 transition-colors"
+                  >
                     <td className="py-3.5 font-bold text-[#0F172A]">
                       {session.sessionDate || "Today"}
                     </td>
                     <td className="py-3.5 font-bold uppercase tracking-wider text-[10px] text-zinc-500">
-                      {session.sessionType?.replace(/_/g, " ") || "General Count"}
+                      {session.sessionType?.replace(/_/g, " ") ||
+                        "General Count"}
                     </td>
                     <td className="py-3.5">
                       <span className="text-[9px] uppercase font-bold text-[#16A34A] bg-[#DCFCE7] border border-[#16A34A]/20 px-2 py-0.5 rounded-full tracking-wider">

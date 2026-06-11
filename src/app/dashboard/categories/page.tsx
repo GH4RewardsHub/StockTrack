@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import AlertDialog from "@/components/alert-dialog";
-import { useBusinessStore } from "@/store/business-store";
-import { useCategoryStore } from "@/store/category-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useCategoryStore } from "@/stores/category-store";
 import { useAuth } from "@/providers/auth-provider";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import { Category } from "@/types/inventory";

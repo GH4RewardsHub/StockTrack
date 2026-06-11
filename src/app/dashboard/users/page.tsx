@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
-import { useBusinessStore } from "@/store/business-store";
-import { useLocationStore } from "@/store/location-store";
+import { useBusinessStore } from "@/stores/business-store";
+import { useLocationStore } from "@/stores/location-store";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
 import {
   getUserAssignments,
@@ -112,7 +112,9 @@ export default function UsersPage() {
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [rolesPermissions, setRolesPermissions] = useState<Record<string, string[]>>({});
+  const [rolesPermissions, setRolesPermissions] = useState<
+    Record<string, string[]>
+  >({});
 
   const loadData = async () => {
     if (!activeBusinessId) return;
@@ -906,7 +908,9 @@ export default function UsersPage() {
                       onChange={(e) => setFormRole(e.target.value)}
                       className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-zinc-950 focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer font-bold"
                     >
-                      <option value="super_admin">Super Admin (Full Access)</option>
+                      <option value="super_admin">
+                        Super Admin (Full Access)
+                      </option>
                       <option value="admin">Admin (Full Access)</option>
                       <option value="manager">Manager</option>
                       <option value="staff">Staff</option>
@@ -963,7 +967,8 @@ export default function UsersPage() {
                         defaultPerms.includes("*") ||
                         defaultPerms.includes(perm.value);
                       const isChecked =
-                        isDefaultGranted || formPermissions.includes(perm.value);
+                        isDefaultGranted ||
+                        formPermissions.includes(perm.value);
                       return (
                         <div
                           key={perm.value}
@@ -980,7 +985,9 @@ export default function UsersPage() {
                           <label
                             htmlFor={`perm-${perm.value}`}
                             className={`text-xs font-semibold cursor-pointer select-none ${
-                              isDefaultGranted ? "text-zinc-400 font-medium" : "text-zinc-700"
+                              isDefaultGranted
+                                ? "text-zinc-400 font-medium"
+                                : "text-zinc-700"
                             }`}
                           >
                             {perm.label}
