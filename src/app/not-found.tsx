@@ -15,7 +15,7 @@ export default function NotFound() {
           <div className="flex justify-center mb-6">
             <div className="h-14 w-14 rounded-xl bg-[#DCFCE7] border border-[#16A34A]/20 flex items-center justify-center">
               <span className="text-[#16A34A] font-extrabold text-3xl tracking-tighter">
-                S
+                N
               </span>
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function NotFound() {
         </div>
 
         <p className="text-center text-xs font-semibold text-zinc-400 mt-4 uppercase tracking-wider">
-          StockTrack
+          NexBrix
         </p>
       </div>
     </div>

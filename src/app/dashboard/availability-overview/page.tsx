@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   ChevronLeft,
@@ -12,7 +12,6 @@ import {
   AlertCircle,
   Eye,
   X,
-  Sparkles,
   Info,
 } from "lucide-react";
 
@@ -155,20 +154,10 @@ export default function AvailabilityOverviewPage() {
     }));
   };
 
-  const totalShiftSlots = filteredOverview.length;
-  const slotsWithAvailability = filteredOverview.filter(
-    (item) => item.availableStaffCount > 0,
-  ).length;
-  const coveragePercent =
-    totalShiftSlots > 0
-      ? ((slotsWithAvailability / totalShiftSlots) * 100).toFixed(1)
-      : "0.0";
-
   const allAvailableStaff = new Set<string>();
   filteredOverview.forEach((item) => {
     item.staffMembers.forEach((s) => allAvailableStaff.add(s.id));
   });
-  const staffAvailableCount = allAvailableStaff.size;
 
   const handleExport = () => {
     toast.success("Availability data exported successfully.");
@@ -180,8 +169,6 @@ export default function AvailabilityOverviewPage() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-[#16A34A] uppercase tracking-wider">
             <span>Staff Operations</span>
-            <span>/</span>
-            <span>Availability Overview</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900 mt-1">
             Availability Overview
@@ -523,101 +510,6 @@ export default function AvailabilityOverviewPage() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="w-full lg:w-80 space-y-6 shrink-0 lg:sticky lg:top-6">
-          <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs space-y-2">
-            <h2 className="text-sm font-extrabold text-zinc-950 border-b border-zinc-100">
-              Availability Summary
-            </h2>
-
-            <div className="text-zinc-500 text-[10px] font-extrabold uppercase tracking-wider">
-              {formatDateRange(currentStartDate, endDate)}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border border-zinc-150 rounded-xl p-4 text-center space-y-1">
-                <div className="text-zinc-400 font-bold text-[10px] uppercase">
-                  Total Slots
-                </div>
-                <div className="text-lg font-extrabold text-zinc-950">
-                  {totalShiftSlots}
-                </div>
-              </div>
-              <div className="border border-zinc-150 rounded-xl p-4 text-center space-y-1">
-                <div className="text-zinc-400 font-bold text-[10px] uppercase">
-                  Filled Slots
-                </div>
-                <div className="text-lg font-extrabold text-zinc-950">
-                  {slotsWithAvailability}
-                </div>
-              </div>
-              <div className="border border-zinc-150 rounded-xl p-4 text-center space-y-1">
-                <div className="text-zinc-400 font-bold text-[10px] uppercase">
-                  Coverage
-                </div>
-                <div className="text-lg font-extrabold text-zinc-950">
-                  {coveragePercent}%
-                </div>
-              </div>
-              <div className="border border-zinc-150 rounded-xl p-4 text-center space-y-1">
-                <div className="text-zinc-400 font-bold text-[10px] uppercase">
-                  Staff Avail.
-                </div>
-                <div className="text-lg font-extrabold text-zinc-950">
-                  {staffAvailableCount}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 border-t border-zinc-100 pt-4">
-              <h4 className="text-xs font-extrabold text-zinc-900">Legend</h4>
-              <div className="space-y-2 text-xs font-semibold text-zinc-600">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-                  <span>Yes - Staff worked previous day</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                  <span>No - Staff did not work previous day</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-zinc-350" />
-                  <span>No data available</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#EFF6FF] border border-[#BFDBFE] p-4 rounded-xl flex items-start gap-2.5 text-blue-900">
-              <AlertCircle className="h-4.5 w-4.5 text-blue-600 shrink-0 mt-0.5" />
-              <div className="text-[11px] font-semibold">
-                <span className="font-extrabold block">Tip</span>
-                <span className="mt-0.5 block leading-normal">
-                  Use the filters above to view availability for specific days,
-                  locations or shifts.
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-3 border-t border-zinc-100 pt-4">
-              <h4 className="text-xs font-extrabold text-zinc-900">Actions</h4>
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-[#16A34A] hover:bg-green-50 rounded-xl text-xs font-extrabold text-[#16A34A] transition duration-200 cursor-pointer shadow-2xs bg-white"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>Go to Roster Builder</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleExport}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-zinc-200 hover:bg-zinc-50 rounded-xl text-xs font-extrabold text-zinc-700 transition duration-200 cursor-pointer shadow-2xs bg-white"
-              >
-                <Download className="h-3.5 w-3.5 text-zinc-500" />
-                <span>Export to Excel</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>

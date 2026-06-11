@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "StockTrack",
+  title: "NexBrix",
   description: "Hospitality Inventory Operations Platform",
 };
 

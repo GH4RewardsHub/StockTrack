@@ -357,7 +357,7 @@ export default function DashboardLayout({
     },
     {
       name: "Availability Entry",
-      href: "/dashboard/roaster-availablity",
+      href: "/dashboard/availablity-entry",
       icon: CalendarPlus,
     },
     {
@@ -918,7 +918,7 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 p-6 max-w-[1600px] w-full mx-auto relative select-none bg-white">
+        <main className="flex-1 p-2 max-w-[1600px] w-full mx-auto relative select-none bg-white">
           {children}
         </main>
       </div>

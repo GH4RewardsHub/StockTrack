@@ -39,7 +39,7 @@ export default function RootPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white">
       <Loader2 className="h-8 w-8 text-emerald-400 animate-spin mb-4" />
       <span className="text-zinc-500 text-xs font-semibold uppercase tracking-wider">
-        Initializing StockTrack...
+        Initializing NexBrix...
       </span>
     </div>
   );

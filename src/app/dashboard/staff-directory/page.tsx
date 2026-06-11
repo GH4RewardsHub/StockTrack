@@ -76,24 +76,23 @@ export default function StaffDirectoryPage() {
   const [loadingPending, setLoadingPending] = useState(false);
 
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("staff");
-  const [selectedBusinesses, setSelectedBusinesses] = useState<string[]>([]);
-  const [selectedLocations, setSelectedLocations] = useState<
-    Record<string, string[]>
-  >({});
+
   const [businessLocations, setBusinessLocations] = useState<
     Record<string, Location[]>
   >({});
-  const [expiresInHours, setExpiresInHours] = useState(48);
+
   const [generatingLink, setGeneratingLink] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
-  const [pendingStaffToApprove, setPendingStaffToApprove] = useState<PendingStaffAssignment | null>(null);
+  const [pendingStaffToApprove, setPendingStaffToApprove] =
+    useState<PendingStaffAssignment | null>(null);
   const [approvalRole, setApprovalRole] = useState("staff");
   const [approvalBusinesses, setApprovalBusinesses] = useState<string[]>([]);
-  const [approvalLocations, setApprovalLocations] = useState<Record<string, string[]>>({});
+  const [approvalLocations, setApprovalLocations] = useState<
+    Record<string, string[]>
+  >({});
   const [submittingApproval, setSubmittingApproval] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -105,8 +104,12 @@ export default function StaffDirectoryPage() {
       setBusinesses(bizList);
       const currentBiz = bizList.find((b) => b.id === activeBusinessId) || null;
       setActiveBusiness(currentBiz);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load directory context.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to load directory context.");
+      }
     } finally {
       setLoadingContext(false);
     }
@@ -122,9 +125,12 @@ export default function StaffDirectoryPage() {
       setLoadingPending(true);
       const data = await getPendingStaff(activeBusinessId);
       setPendingStaff(data);
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to load pending staff registrations.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to load pending staff registrations.");
+      }
     } finally {
       setLoadingPending(false);
     }
@@ -225,33 +231,28 @@ export default function StaffDirectoryPage() {
     .sort((a, b) => {
       if (!sortField) return 0;
 
-      let valA: any = "";
-      let valB: any = "";
+      let valA = "";
+      let valB = "";
 
       if (sortField === "assigned_business") {
         valA = activeBusiness?.name || "";
         valB = activeBusiness?.name || "";
-      } else if (sortField === "assigned_locations") {
+      } else if (
+        sortField === "assigned_locations" ||
+        sortField === "locations"
+      ) {
         valA = a.locations?.map((l) => l.name).join(", ") || "";
         valB = b.locations?.map((l) => l.name).join(", ") || "";
       } else {
-        valA = a[sortField as keyof Staff] || "";
-        valB = b[sortField as keyof Staff] || "";
+        const fieldValA = a[sortField as keyof Staff];
+        const fieldValB = b[sortField as keyof Staff];
+        valA = typeof fieldValA === "string" ? fieldValA : "";
+        valB = typeof fieldValB === "string" ? fieldValB : "";
       }
 
-      if (typeof valA === "string") {
-        return sortDirection === "asc"
-          ? valA.localeCompare(valB)
-          : valB.localeCompare(valA);
-      } else {
-        return sortDirection === "asc"
-          ? valA > valB
-            ? 1
-            : -1
-          : valB > valA
-            ? 1
-            : -1;
-      }
+      return sortDirection === "asc"
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
     });
 
   const paginatedStaff = (() => {
@@ -295,62 +296,6 @@ export default function StaffDirectoryPage() {
     return "bg-zinc-50 text-zinc-600 border-zinc-100";
   };
 
-  const handleToggleBusiness = async (bizId: string) => {
-    if (selectedBusinesses.includes(bizId)) {
-      setSelectedBusinesses(selectedBusinesses.filter((id) => id !== bizId));
-      setSelectedLocations((prev) => {
-        const next = { ...prev };
-        delete next[bizId];
-        return next;
-      });
-    } else {
-      setSelectedBusinesses([...selectedBusinesses, bizId]);
-      if (!businessLocations[bizId]) {
-        try {
-          const locs = await getLocations(bizId);
-          setBusinessLocations((prev) => ({ ...prev, [bizId]: locs }));
-        } catch (err) {
-          if (err instanceof Error)
-            toast.error(
-              err.message || "Failed to load locations for this business.",
-            );
-        }
-      }
-    }
-  };
-
-  const handleToggleLocation = (bizId: string, locId: string) => {
-    const currentLocs = selectedLocations[bizId] || [];
-    if (currentLocs.includes(locId)) {
-      setSelectedLocations((prev) => ({
-        ...prev,
-        [bizId]: currentLocs.filter((id) => id !== locId),
-      }));
-    } else {
-      setSelectedLocations((prev) => ({
-        ...prev,
-        [bizId]: [...currentLocs, locId],
-      }));
-    }
-  };
-
-  const handleToggleAllLocations = (bizId: string) => {
-    const allLocs = businessLocations[bizId] || [];
-    const currentLocs = selectedLocations[bizId] || [];
-
-    if (currentLocs.length === allLocs.length) {
-      setSelectedLocations((prev) => ({
-        ...prev,
-        [bizId]: [],
-      }));
-    } else {
-      setSelectedLocations((prev) => ({
-        ...prev,
-        [bizId]: allLocs.map((l) => l.id),
-      }));
-    }
-  };
-
   const handleCreateInvitation = async () => {
     if (!activeBusinessId) return;
     try {
@@ -369,8 +314,12 @@ export default function StaffDirectoryPage() {
       toast.success("Invitation link generated and copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
       setIsAddStaffOpen(true);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate invitation.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to generate invitation.");
+      }
     } finally {
       setGeneratingLink(false);
     }
@@ -386,7 +335,7 @@ export default function StaffDirectoryPage() {
 
   const handleShareWhatsApp = () => {
     if (!generatedLink) return;
-    const msg = `Click the link to join our team on StockTrack: ${generatedLink}`;
+    const msg = `Click the link to join our team on NexBrix: ${generatedLink}`;
     window.open(
       `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,
       "_blank",
@@ -436,7 +385,9 @@ export default function StaffDirectoryPage() {
           setBusinessLocations((prev) => ({ ...prev, [bizId]: locs }));
         } catch (err) {
           if (err instanceof Error) {
-            toast.error(err.message || "Failed to load locations for this business.");
+            toast.error(
+              err.message || "Failed to load locations for this business.",
+            );
           }
         }
       }
@@ -495,16 +446,22 @@ export default function StaffDirectoryPage() {
         {
           role: approvalRole,
           assignments,
-        }
+        },
       );
 
-      toast.success(res.message || "Staff access approved and configured successfully.");
+      toast.success(
+        res.message || "Staff access approved and configured successfully.",
+      );
       setIsApprovalModalOpen(false);
       setPendingStaffToApprove(null);
       await loadPending();
       await fetchStaffMembers(activeBusinessId);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to approve staff.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to approve staff.");
+      }
     } finally {
       setSubmittingApproval(false);
     }
@@ -516,18 +473,18 @@ export default function StaffDirectoryPage() {
       const res = await rejectPendingStaff(activeBusinessId, assignmentId);
       toast.success(res.message || "Staff request rejected.");
       await loadPending();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reject staff.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to reject staff.");
+      }
     }
   };
 
   const handleResetModal = () => {
     setIsAddStaffOpen(false);
     setGeneratedLink(null);
-    setSelectedBusinesses([]);
-    setSelectedLocations({});
-    setSelectedRole("staff");
-    setExpiresInHours(48);
   };
 
   if (staffLoading || loadingContext) {
@@ -1050,9 +1007,12 @@ export default function StaffDirectoryPage() {
 
                 <p className="text-[11px] text-[#64748B] font-semibold leading-relaxed">
                   Share this unique link via WhatsApp or Email. The link is
-                  valid for <span className="font-bold text-[#16A34A]">48 hours</span>. Once the user registers, you
-                  will receive their profile details in the{" "}
-                  <span className="font-bold">Pending Approvals</span> tab to assign their role, business(es), and location(s).
+                  valid for{" "}
+                  <span className="font-bold text-[#16A34A]">48 hours</span>.
+                  Once the user registers, you will receive their profile
+                  details in the{" "}
+                  <span className="font-bold">Pending Approvals</span> tab to
+                  assign their role, business(es), and location(s).
                 </p>
               </div>
 
@@ -1134,9 +1094,13 @@ export default function StaffDirectoryPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-zinc-500 font-bold block">SUBMITTED ON</span>
+                    <span className="text-zinc-500 font-bold block">
+                      SUBMITTED ON
+                    </span>
                     <span className="text-zinc-900 font-extrabold mt-0.5 block">
-                      {new Date(pendingStaffToApprove.created_at).toLocaleDateString()}
+                      {new Date(
+                        pendingStaffToApprove.created_at,
+                      ).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -1159,7 +1123,8 @@ export default function StaffDirectoryPage() {
                   >
                     <span className="text-sm font-extrabold block">Staff</span>
                     <span className="text-[11px] text-zinc-400 font-semibold mt-1">
-                      General permissions for entering timesheets and sales records.
+                      General permissions for entering timesheets and sales
+                      records.
                     </span>
                   </button>
 
@@ -1172,7 +1137,9 @@ export default function StaffDirectoryPage() {
                         : "border-zinc-200 bg-white hover:bg-zinc-50/50 text-zinc-500"
                     }`}
                   >
-                    <span className="text-sm font-extrabold block">Manager</span>
+                    <span className="text-sm font-extrabold block">
+                      Manager
+                    </span>
                     <span className="text-[11px] text-zinc-400 font-semibold mt-1">
                       Advanced access for reviewing data and creating reports.
                     </span>
@@ -1210,7 +1177,9 @@ export default function StaffDirectoryPage() {
                             <input
                               type="checkbox"
                               checked={isBizChecked}
-                              onChange={() => handleToggleApprovalBusiness(b.id)}
+                              onChange={() =>
+                                handleToggleApprovalBusiness(b.id)
+                              }
                               className="h-4 w-4 rounded border-zinc-300 text-[#16A34A] focus:ring-[#16A34A] cursor-pointer"
                             />
                             <span className="text-xs font-extrabold text-zinc-950 flex items-center gap-1.5">
@@ -1245,13 +1214,20 @@ export default function StaffDirectoryPage() {
                                       >
                                         <input
                                           type="checkbox"
-                                          checked={currentCheckedLocs.includes(loc.id)}
+                                          checked={currentCheckedLocs.includes(
+                                            loc.id,
+                                          )}
                                           onChange={() =>
-                                            handleToggleApprovalLocation(b.id, loc.id)
+                                            handleToggleApprovalLocation(
+                                              b.id,
+                                              loc.id,
+                                            )
                                           }
                                           className="h-3.5 w-3.5 rounded border-zinc-300 text-[#16A34A] focus:ring-[#16A34A] cursor-pointer"
                                         />
-                                        <span className="truncate">{loc.name}</span>
+                                        <span className="truncate">
+                                          {loc.name}
+                                        </span>
                                       </label>
                                     ))}
                                   </div>
@@ -1285,7 +1261,11 @@ export default function StaffDirectoryPage() {
                 <button
                   type="button"
                   onClick={handleSubmitApproval}
-                  disabled={submittingApproval || approvalBusinesses.length === 0 || !approvalRole}
+                  disabled={
+                    submittingApproval ||
+                    approvalBusinesses.length === 0 ||
+                    !approvalRole
+                  }
                   className="bg-[#16A34A] hover:bg-[#15803D] active:bg-[#14532D] text-white rounded-xl py-3 text-xs font-bold uppercase tracking-wider shadow-md transition duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {submittingApproval ? (
