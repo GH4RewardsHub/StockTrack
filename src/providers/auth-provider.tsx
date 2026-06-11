@@ -69,12 +69,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (session?.session?.token) {
       localStorage.setItem("stocktrack_token", session.session.token);
-    } else if (session === null) {
+    } else if (session === null && !loading) {
       localStorage.removeItem("stocktrack_token");
       localStorage.removeItem("stocktrack_active_business_id");
       setProfile(null);
     }
-  }, [session]);
+  }, [session, loading]);
 
   const refreshProfile = async () => {
     if (!session?.user) return;
