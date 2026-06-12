@@ -3,6 +3,8 @@
   "admin": ["*"],
   "manager": [
     "/dashboard",
+    "/dashboard/business",
+    "/dashboard/locations",
     "/dashboard/suppliers",
     "/dashboard/categories",
     "/dashboard/stock-items",
@@ -22,6 +24,8 @@
   ],
   "staff": [
     "/dashboard",
+    "/dashboard/business",
+    "/dashboard/locations",
     "/dashboard/counts",
     "/dashboard/refill-planner",
     "/dashboard/purchase-orders",

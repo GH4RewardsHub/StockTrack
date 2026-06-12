@@ -104,9 +104,12 @@ export default function RefillPlannerPage() {
 
       setSelectedItems(initialSelected);
       setQuantities(initialQuantities);
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to load refill planner data.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to load refill planner data.");
+      }
     } finally {
       setLoading(false);
     }
@@ -333,9 +336,12 @@ export default function RefillPlannerPage() {
         `Purchase order${poNumbers.length > 1 ? "s" : ""} created: ${poNumbers.join(", ")}`,
       );
       await loadData();
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to create purchase orders.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to create purchase orders.");
+      }
     } finally {
       setCreatingPO(false);
     }
