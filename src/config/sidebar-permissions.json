@@ -3,8 +3,6 @@
   "admin": ["*"],
   "manager": [
     "/dashboard",
-    "/dashboard/business",
-    "/dashboard/locations",
     "/dashboard/suppliers",
     "/dashboard/categories",
     "/dashboard/stock-items",
@@ -13,11 +11,7 @@
     "/dashboard/refill-planner",
     "/dashboard/purchase-orders",
     "/dashboard/deliveries",
-    "/dashboard/sales",
-    "/dashboard/sales-imports",
-    "/dashboard/consumption",
     "/dashboard/reconciliation",
-    "/dashboard/settings",
     "/dashboard/staff-dashboard",
     "/dashboard/staff-directory",
     "/dashboard/timesheet-entry",
@@ -28,11 +22,16 @@
   ],
   "staff": [
     "/dashboard",
-    "/dashboard/business",
-    "/dashboard/locations",
     "/dashboard/counts",
+    "/dashboard/refill-planner",
+    "/dashboard/purchase-orders",
+    "/dashboard/deliveries",
     "/dashboard/staff-dashboard",
+    "/dashboard/staff-directory",
+    "/dashboard/availability-overview",
     "/dashboard/timesheet-entry",
+    "/dashboard/timesheet-review",
+    "/dashboard/timesheet-reports",
     "/dashboard/availablity-entry"
   ]
 }
