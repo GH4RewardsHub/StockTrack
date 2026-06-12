@@ -185,6 +185,18 @@ export default function SuppliersPage() {
       return;
     }
 
+    if (!/^[a-zA-Z0-9\s]+$/.test(trimmedName)) {
+      toast.error(
+        "Supplier name can only contain letters, numbers, and spaces.",
+      );
+      return;
+    }
+
+    if (/^\d+$/.test(trimmedName)) {
+      toast.error("Supplier name cannot consist only of numbers.");
+      return;
+    }
+
     const isDuplicate = suppliers.some(
       (sup) =>
         sup.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
@@ -195,9 +207,15 @@ export default function SuppliersPage() {
       return;
     }
 
-    if (trimmedContact.length > 100) {
-      toast.error("Contact person must be 100 characters or less.");
-      return;
+    if (trimmedContact) {
+      if (trimmedContact.length > 100) {
+        toast.error("Contact person must be 100 characters or less.");
+        return;
+      }
+      if (!/^[a-zA-Z\s]+$/.test(trimmedContact)) {
+        toast.error("Contact person can only contain letters and spaces.");
+        return;
+      }
     }
 
     if (trimmedPhone.length > 20) {
@@ -225,14 +243,44 @@ export default function SuppliersPage() {
       return;
     }
 
-    if (trimmedState.length > 50) {
-      toast.error("State / Province must be 50 characters or less.");
+    if (!/^[a-zA-Z\s]+$/.test(trimmedCity)) {
+      toast.error("City can only contain letters and spaces.");
       return;
     }
 
-    if (trimmedPostal.length > 10) {
-      toast.error("Postal code must be 10 characters or less.");
-      return;
+    if (trimmedState) {
+      if (trimmedState.length > 50) {
+        toast.error("State / Province must be 50 characters or less.");
+        return;
+      }
+      if (!/^[a-zA-Z\s]+$/.test(trimmedState)) {
+        toast.error("State / Province can only contain letters and spaces.");
+        return;
+      }
+    }
+
+    if (trimmedPostal) {
+      if (trimmedPostal.length > 10) {
+        toast.error("Postal code must be 10 characters or less.");
+        return;
+      }
+      if (!/^[a-zA-Z0-9\s]+$/.test(trimmedPostal)) {
+        toast.error(
+          "Postal code can only contain letters, numbers, and spaces.",
+        );
+        return;
+      }
+    }
+
+    if (trimmedCountry) {
+      if (trimmedCountry.length > 50) {
+        toast.error("Country must be 50 characters or less.");
+        return;
+      }
+      if (!/^[a-zA-Z\s]+$/.test(trimmedCountry)) {
+        toast.error("Country can only contain letters and spaces.");
+        return;
+      }
     }
 
     if (trimmedWebsite.length > 200) {
@@ -314,9 +362,12 @@ export default function SuppliersPage() {
       }
 
       setShowDrawer(false);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to save supplier. Please try again.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to save supplier. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -404,6 +455,7 @@ export default function SuppliersPage() {
 
   useEffect(() => {
     if (currentPage > totalPages) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentPage(totalPages);
     }
   }, [totalPages, currentPage]);
@@ -474,7 +526,11 @@ export default function SuppliersPage() {
             <div className="relative min-w-[140px]">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value as "all" | "active" | "inactive",
+                  )
+                }
                 className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-bold text-zinc-700 shadow-xs appearance-none focus:outline-none focus:ring-1 focus:ring-[#16A34A] focus:border-[#16A34A] cursor-pointer"
               >
                 <option value="all">All Status</option>
@@ -952,7 +1008,9 @@ export default function SuppliersPage() {
                         className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 pl-10 pr-10 text-xs text-[#0F172A] font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer"
                         value={formOrderingMethod}
                         onChange={(e) =>
-                          setFormOrderingMethod(e.target.value as any)
+                          setFormOrderingMethod(
+                            e.target.value as OrderingMethod,
+                          )
                         }
                       >
                         <option value="">

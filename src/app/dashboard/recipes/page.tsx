@@ -1,17 +1,19 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
+import { useEffect, useState, useMemo } from "react";
+
+import { Business } from "@/types/business";
+import { useAuth } from "@/providers/auth-provider";
 import AlertDialog from "@/components/alert-dialog";
-import { useBusinessStore } from "@/stores/business-store";
+import { Recipe, StockItem } from "@/types/inventory";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useCategoryStore } from "@/stores/category-store";
-import { useAuth } from "@/providers/auth-provider";
+import { useBusinessStore } from "@/stores/business-store";
 import { getStockItems } from "@/lib/repositories/stock-item.repository";
 import { getUserBusinesses } from "@/lib/repositories/business.repository";
-import { Recipe, StockItem } from "@/types/inventory";
-import { Business } from "@/types/business";
 import {
   ChefHat,
   Plus,
@@ -23,7 +25,6 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  AlertCircle,
   PlusCircle,
 } from "lucide-react";
 
@@ -71,7 +72,6 @@ export default function RecipesPage() {
     useState(false);
 
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -107,6 +107,12 @@ export default function RecipesPage() {
     loadContext();
   }, [activeBusinessId, profile, fetchRecipes, fetchCategories]);
 
+  useEffect(() => {
+    if (storeError) {
+      toast.error(storeError);
+    }
+  }, [storeError]);
+
   const openAddDrawer = () => {
     setEditId(null);
     setFormName("");
@@ -119,7 +125,6 @@ export default function RecipesPage() {
     setFormIngredients([]);
     setFormSalesAmount("");
     setIsSalesAmountManuallySet(false);
-    setError(null);
     setShowDrawer(true);
   };
 
@@ -144,20 +149,79 @@ export default function RecipesPage() {
         : "",
     );
     setIsSalesAmountManuallySet(true);
-    setError(null);
     setShowDrawer(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !activeBusinessId ||
-      !formName.trim() ||
-      formYieldQty <= 0 ||
-      !formSalesAmount.trim() ||
-      parseFloat(formSalesAmount) < 0
-    ) {
-      setError("Please fill in all required fields correctly.");
+
+    if (!activeBusinessId) {
+      toast.error("Active business ID not found.");
+      return;
+    }
+
+    const trimmedName = formName.trim();
+    if (!trimmedName) {
+      toast.error("Recipe Name is required.");
+      return;
+    }
+    if (trimmedName.length > 50) {
+      toast.error("Recipe Name cannot exceed 50 characters.");
+      return;
+    }
+    if (!/^[a-zA-Z0-9\s]+$/.test(trimmedName)) {
+      toast.error("Recipe Name can only contain letters, numbers, and spaces.");
+      return;
+    }
+    if (/^\d+$/.test(trimmedName)) {
+      toast.error("Recipe Name cannot consist only of numbers.");
+      return;
+    }
+
+    const trimmedCode = formCode.trim();
+    if (trimmedCode) {
+      if (trimmedCode.length > 20) {
+        toast.error("Recipe Code cannot exceed 20 characters.");
+        return;
+      }
+      if (!/^[a-zA-Z0-9]+$/.test(trimmedCode)) {
+        toast.error("Recipe Code can only contain letters and numbers.");
+        return;
+      }
+    }
+
+    if (!formCategoryId) {
+      toast.error("Category is required.");
+      return;
+    }
+
+    if (formYieldQty <= 0) {
+      toast.error("Yield / Serving quantity must be a positive integer.");
+      return;
+    }
+
+    const trimmedYieldUnit = formYieldUnit.trim();
+    if (!trimmedYieldUnit) {
+      toast.error("Yield Unit is required.");
+      return;
+    }
+    if (trimmedYieldUnit.length > 20) {
+      toast.error("Yield Unit cannot exceed 20 characters.");
+      return;
+    }
+    if (!/^[a-zA-Z\s]+$/.test(trimmedYieldUnit)) {
+      toast.error("Yield Unit can only contain letters and spaces.");
+      return;
+    }
+
+    if (!formSalesAmount.trim() || parseFloat(formSalesAmount) < 0) {
+      toast.error("Sales Amount must be a non-negative number.");
+      return;
+    }
+
+    const trimmedDescription = formDescription.trim();
+    if (trimmedDescription && trimmedDescription.length > 200) {
+      toast.error("Description cannot exceed 200 characters.");
       return;
     }
 
@@ -165,15 +229,14 @@ export default function RecipesPage() {
       (ing) => !ing.itemId || ing.qtyUsed <= 0,
     );
     if (invalidIngredient) {
-      setError(
-        "Please ensure all ingredients have an selected item and positive quantity.",
+      toast.error(
+        "Please ensure all ingredients have a selected item and positive quantity.",
       );
       return;
     }
 
     try {
       setSaving(true);
-      setError(null);
 
       const ingredientsData = formIngredients.map((ing) => {
         const item = stockItems.find((s) => s.id === ing.itemId);
@@ -188,12 +251,12 @@ export default function RecipesPage() {
 
       const recipeData = {
         businessId: activeBusinessId,
-        recipeName: formName.trim(),
-        recipeCode: formCode.trim() || undefined,
+        recipeName: trimmedName,
+        recipeCode: trimmedCode || undefined,
         categoryId: formCategoryId || undefined,
         yieldQty: formYieldQty,
-        yieldUnit: formYieldUnit,
-        description: formDescription.trim() || undefined,
+        yieldUnit: trimmedYieldUnit,
+        description: trimmedDescription || undefined,
         status: formStatus,
         salesAmount: parseFloat(formSalesAmount),
         ingredients: ingredientsData,
@@ -201,14 +264,19 @@ export default function RecipesPage() {
 
       if (editId) {
         await updateRecipe(activeBusinessId, editId, recipeData);
+        toast.success("Recipe updated successfully!");
       } else {
         await addRecipe(activeBusinessId, recipeData);
+        toast.success("Recipe added successfully!");
       }
 
       setShowDrawer(false);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to save recipe. Please try again.");
+    } catch (err) {
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to save recipe. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -224,8 +292,11 @@ export default function RecipesPage() {
       await deleteRecipe(activeBusinessId, deleteTarget);
       toast.success("Recipe deleted successfully!");
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to delete recipe.");
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Failed to delete recipe.");
+      }
     } finally {
       setDeleteTarget(null);
     }
@@ -250,7 +321,7 @@ export default function RecipesPage() {
   const handleIngredientChange = (
     index: number,
     field: "itemId" | "qtyUsed",
-    value: any,
+    value: string | number,
   ) => {
     const updated = [...formIngredients];
     updated[index] = {
@@ -407,13 +478,6 @@ export default function RecipesPage() {
             </div>
           </div>
         </div>
-
-        {(storeError || error) && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl p-3 flex items-center gap-2 justify-center font-bold">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {storeError || error}
-          </div>
-        )}
 
         {filteredRecipes.length === 0 ? (
           <div className="bg-white border border-zinc-200 rounded-2xl py-20 px-6 text-center flex flex-col items-center justify-center shadow-sm animate-fade-in">
@@ -637,6 +701,7 @@ export default function RecipesPage() {
                     <input
                       type="text"
                       required
+                      maxLength={50}
                       placeholder="Enter recipe name"
                       className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
                       value={formName}
@@ -650,6 +715,7 @@ export default function RecipesPage() {
                     </label>
                     <input
                       type="text"
+                      maxLength={20}
                       placeholder="e.g. RC-0001"
                       className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
                       value={formCode}
@@ -699,6 +765,7 @@ export default function RecipesPage() {
                       <input
                         type="text"
                         required
+                        maxLength={20}
                         placeholder="Unit (e.g. Serving, Portion)"
                         className="flex-1 bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold"
                         value={formYieldUnit}
@@ -869,6 +936,7 @@ export default function RecipesPage() {
                     <textarea
                       placeholder="Enter description"
                       rows={3}
+                      maxLength={200}
                       className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-zinc-950 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#16A34A] transition-all font-semibold resize-none"
                       value={formDescription}
                       onChange={(e) => setFormDescription(e.target.value)}
@@ -884,7 +952,9 @@ export default function RecipesPage() {
                         required
                         className="w-full bg-white border border-zinc-300 focus:border-[#16A34A] rounded-xl py-2.5 px-3.5 text-xs text-[#0F172A] font-bold focus:outline-none focus:ring-1 focus:ring-[#16A34A] appearance-none cursor-pointer"
                         value={formStatus}
-                        onChange={(e) => setFormStatus(e.target.value as any)}
+                        onChange={(e) =>
+                          setFormStatus(e.target.value as "active" | "inactive")
+                        }
                       >
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
