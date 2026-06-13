@@ -592,10 +592,10 @@ export default function StockCountTestPage() {
                         {/* Item Name (including Category subtext) */}
                         <td className="py-2.5 px-8">
                           <div>
-                            <p className="font-extrabold text-zinc-900 text-sm">
+                            <p className="font-semibold text-zinc-900 text-sm">
                               {item.name}
                             </p>
-                            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
+                            <p className="text-[10px] text-zinc-400 uppercase font-medium tracking-wider mt-0.5">
                               {item.categoryName || "Uncategorized"}
                             </p>
                           </div>
