@@ -27,15 +27,10 @@
     "/dashboard/business",
     "/dashboard/locations",
     "/dashboard/counts",
-    "/dashboard/refill-planner",
-    "/dashboard/purchase-orders",
     "/dashboard/deliveries",
     "/dashboard/staff-dashboard",
     "/dashboard/staff-directory",
-    "/dashboard/availability-overview",
     "/dashboard/timesheet-entry",
-    "/dashboard/timesheet-review",
-    "/dashboard/timesheet-reports",
     "/dashboard/availablity-entry"
   ]
 }
